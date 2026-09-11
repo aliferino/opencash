@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Treasurer;
 
 use App\Models\CashExpense;
 use App\Models\CashIncome;

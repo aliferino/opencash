@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Treasurer;
 
 use App\Models\GroupSetting;
 use Illuminate\Http\Request;
