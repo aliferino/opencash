@@ -7,9 +7,6 @@ use Illuminate\Http\Request;
 
 class PeriodController extends Controller
 {
-    /**
-     * Admin: daftar periode kas (mis. Mingguan, Bulanan).
-     */
     public function index()
     {
         return Period::latest('id')->get();

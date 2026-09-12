@@ -5,20 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Models\Group;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class GroupController extends Controller
 {
-    /**
-     * Admin: lihat semua kelas beserta jumlah anggotanya.
-     */
     public function index()
     {
         return Group::withCount('users')->latest('id')->paginate(15);
     }
 
-    /**
-     * Admin: buat master data kelas baru (mis. XII RPL 1).
-     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -52,9 +47,6 @@ class GroupController extends Controller
         return response()->noContent();
     }
 
-    /**
-     * Bendahara: unggah/ganti foto barcode QRIS rekening kelasnya sendiri.
-     */
     public function uploadQris(Request $request)
     {
         $request->validate([
@@ -74,5 +66,20 @@ class GroupController extends Controller
         $group->update(['qris_image' => $path]);
 
         return response()->json($group->fresh());
+    }
+
+    public function refreshInviteCode(Request $request)
+    {
+        $group = $request->user()->group;
+
+        abort_if(! $group, 404, 'Anda belum terdaftar di kelas manapun.');
+
+        do {
+            $code = Str::upper(Str::random(6));
+        } while (\App\Models\Group::where('invite_code', $code)->exists());
+
+        $group->update(['invite_code' => $code]);
+
+        return response()->json(['invite_code' => $code]);
     }
 }

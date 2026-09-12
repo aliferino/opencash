@@ -16,7 +16,7 @@ return new class extends Migration
                 ->nullOnDelete();
 
             $table->enum('role', ['admin', 'treasurer', 'student'])
-                ->default('student')
+                ->nullable()
                 ->after('group_id');
         });
     }

@@ -20,6 +20,7 @@ class Group extends Model
     protected $fillable = [
         'name',
         'qris_image',
+        'invite_code',
     ];
 
     /**
