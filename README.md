@@ -1,58 +1,109 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<div align="center">
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+# 💵 OpenCash
 
-## About Laravel
+**Aplikasi pengelolaan kas kelas — transparan, gampang dipakai, tanpa nyatet manual di buku.**
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)
+![PHP](https://img.shields.io/badge/PHP-8.3%2B-777BB4?logo=php&logoColor=white)
+![License](https://img.shields.io/badge/status-in%20development-yellow)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+</div>
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Kenapa OpenCash?
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Kas kelas biasanya dicatat manual di buku kecil — gampang hilang, gampang lupa siapa yang belum bayar, dan gak ada bukti transparan ke seluruh anggota kelas. **OpenCash** menggantikan itu semua dengan sistem web sederhana: siswa bisa bayar kas lewat QRIS atau tunai, bendahara tinggal verifikasi, dan semua orang di kelas bisa lihat laporan pemasukan-pengeluaran secara real-time.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## ✨ Fitur Utama
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- 🏫 **Multi-kelas** — satu aplikasi bisa menaungi banyak kelas/kelompok sekaligus, masing-masing dengan kas terpisah.
+- 🔑 **Gabung kelas pakai kode undangan** — siswa cukup masukkan kode dari bendahara/guru, tidak perlu didaftarkan manual satu-satu.
+- 💳 **Dua jalur pembayaran** — tunai (dicatat langsung oleh bendahara) atau QRIS mandiri (siswa upload bukti transfer, bendahara tinggal verifikasi).
+- 🚫 **Anti bayar dobel** — sistem otomatis menolak kalau tagihan yang sama sudah lunas atau masih menunggu verifikasi.
+- 📅 **Jadwal tagihan fleksibel** — bendahara bisa atur nominal kas & denda per periode (mingguan, bulanan, dst).
+- 🧾 **Riwayat pengeluaran + bukti nota** — setiap pengeluaran kelas wajib disertai foto struk, transparan buat semua anggota.
+- 🔔 **Notifikasi otomatis** — bendahara diberi tahu saat ada pembayaran baru, siswa diberi tahu saat pembayarannya diverifikasi.
+- 📊 **Laporan saldo real-time** — saldo kas, riwayat per siswa, dan laporan kelas bisa dilihat kapan saja.
 
-## Agentic Development
+## 👥 Peran Pengguna
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+| Peran | Cakupan | Bisa ngapain aja |
+|---|---|---|
+| **Admin** | Seluruh platform (lintas kelas) | Membuat/menghapus kelas, menambahkan akun bendahara ke sebuah kelas, memantau seluruh user & riwayat perubahan data |
+| **Bendahara** | Satu kelas | Kelola siswa, atur jadwal & nominal kas, verifikasi pembayaran, catat pengeluaran, lihat laporan |
+| **Siswa** | Satu kelas | Lihat tagihan, bayar tunai/QRIS, lihat riwayat pembayaran sendiri |
+
+Detail lengkap alur & aturan bisnisnya ada di [`CLAUDE.md`](./CLAUDE.md). Panduan pakai untuk pengguna awam ada di **buku manual** terpisah (lihat bagian bawah).
+
+## 🛠️ Tech Stack
+
+- **Backend:** Laravel, PHP 8.3+
+- **Database:** MySQL/PostgreSQL (via Eloquent ORM)
+- **Frontend:** Blade + Tailwind CSS, fetch API untuk interaksi tanpa reload
+- **Queue:** Database driver
+- **Cache:** File-based
+- **Storage:** Local disk (dev) — direncanakan pindah ke Cloudinary untuk production
+
+## 🚀 Instalasi Lokal
 
 ```bash
-composer require laravel/boost --dev
+# 1. Clone repo
+git clone https://github.com/aliferino/opencash.git
+cd opencash
 
-php artisan boost:install
+# 2. Install dependency
+composer install
+npm install
+
+# 3. Siapkan environment
+cp .env.example .env
+php artisan key:generate
+
+# 4. Sesuaikan koneksi database di .env, lalu migrasi + seed
+php artisan migrate --seed
+
+# 5. Build asset & jalankan server
+npm run build
+php artisan serve
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Setelah seeding, akun admin default tersedia untuk login pertama kali:
 
-## Contributing
+```
+Email    : admin@opencash.test
+Password : password
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+> ⚠️ **Ganti password ini sebelum deploy ke production.**
 
-## Code of Conduct
+## 📂 Struktur Peran di Kode
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```
+app/Http/Controllers/
+├── Admin/        → Fitur khusus admin (global, lintas kelas)
+├── Treasurer/     → Fitur khusus bendahara (per kelas)
+├── Student/      → Fitur khusus siswa (per kelas)
+└── ...           → Controller bersama (notifikasi, onboarding, auth)
+```
 
-## Security Vulnerabilities
+## 🗺️ Status Pengembangan
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- [x] Skema database & model
+- [x] Business logic & controller (Admin/Treasurer/Student)
+- [x] Routing lengkap dengan proteksi role
+- [ ] Tampilan (Blade views) — sedang dikerjakan
+- [ ] Export laporan ke PDF/Excel
+- [ ] Migrasi storage ke Cloudinary untuk production
 
-## License
+## 📖 Dokumentasi Lain
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- [`CLAUDE.md`](./CLAUDE.md) — konteks logika bisnis & konvensi kode untuk kontributor/AI assistant.
+- **Buku Panduan Pengguna** (`.docx`) — panduan pakai aplikasi untuk admin, bendahara, dan siswa, ditulis untuk pengguna awam non-teknis.
+
+---
+
+<div align="center">
+Dibuat untuk memudahkan kas kelas — tanpa buku catatan, tanpa drama "siapa yang belum bayar".
+</div>

@@ -1,47 +1,155 @@
-<laravel-boost-guidelines>
-# Laravel Application
+# OpenCash — Konteks Project
 
-This repository contains a Laravel application. Complete the following setup before working on the user's request.
+Aplikasi web Laravel untuk mengelola kas kelas (sekolah). Dokumen ini adalah
+sumber kebenaran untuk logika bisnis & alur kerja — baca ini dulu sebelum
+mengerjakan apa pun di repo ini, jangan asumsi dari nama file/kode saja.
 
-## Prerequisites
+Kode sengaja MINIM KOMENTAR (logika bisnis didokumentasikan di sini, bukan
+di inline comment). Ikuti gaya ini saat menambah/mengubah kode: tidak perlu
+docblock panjang di tiap method, cukup nama method/variable yang jelas.
 
-Verify that PHP and Composer are available:
+## 1. Peran (Roles)
 
-```sh
-php -v
-composer -V
-```
+Ada 3 role, disimpan di `users.role` (enum: `admin`, `treasurer`, `student`,
+nullable — user baru daftar belum punya role).
 
-If either command is unavailable, detect the user's operating system and install the prerequisites with the appropriate command:
+### Admin — GLOBAL, lintas kelas
+- `group_id` SELALU `null`. Tidak terikat satu kelas manapun.
+- Tidak bisa didapat lewat registrasi publik — akun admin di-seed manual
+  (lihat `database/seeders/DatabaseSeeder.php`, kredensial default:
+  `admin@opencash.test` / `password`).
+- Wewenang: CRUD semua kelas (`Group`), lihat semua user & audit lintas
+  kelas, tambah 1-2 akun bendahara langsung ke sebuah kelas setelah kelas
+  itu dibuat.
+- TIDAK mengurus operasional harian satu kelas (itu tugas bendahara).
 
-macOS:
+### Treasurer (Bendahara) — per kelas, "operator" kelas
+- Terikat satu `group_id`. Satu kelas bisa punya lebih dari satu bendahara.
+- Wewenang: kelola siswa di kelasnya (tambah manual / lihat daftar), ubah
+  role member kelas (student ↔ treasurer, serah-terima jabatan), atur
+  jadwal tagihan (`CashSchedule`), atur nominal kas & denda per periode
+  (`GroupSetting`), upload gambar QRIS, catat pembayaran tunai, verifikasi
+  pembayaran QRIS, catat pengeluaran, lihat laporan.
+- HANYA bisa refresh/copy kode undangan kelasnya sendiri — TIDAK bisa
+  membuat atau menghapus kelas (itu wewenang admin).
+- Tidak bisa mengubah role akun sendiri (cegah lockout).
 
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/mac/8.5)"
-```
+### Student (Siswa)
+- Terikat satu `group_id`, `role` selalu `student`.
+- Masuk kelas dengan salah satu dari 2 cara:
+  1. Memasukkan kode undangan di halaman onboarding (`/onboarding`).
+  2. Ditambahkan manual oleh bendahara (`Treasurer\StudentController::store`).
+- Wewenang: lihat tagihan kelasnya, bayar tunai (diinput bendahara) atau
+  QRIS mandiri (upload bukti sendiri, lihat §3).
 
-Windows PowerShell:
+## 2. Alur Onboarding
 
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://php.new/install/windows/8.5'))
-```
+- User baru daftar (`Auth\RegisterController`) → `role` & `group_id` NULL.
+- Setelah login, kalau `group_id` masih null → diarahkan ke `/onboarding`
+  (halaman tunggu, cuma ada form input kode undangan — TIDAK ADA tombol
+  "buat kelas").
+- Submit kode undangan (`OnboardingController::join`) → dicari `Group`
+  dengan `invite_code` itu → kalau ketemu, user langsung di-set
+  `group_id` = kelas itu, `role` = `student` (SELALU jadi siswa, siapa pun
+  yang membagikan kodenya — admin atau bendahara).
+- **Kode undangan TIDAK sekali pakai** — sengaja tidak di-null-kan setelah
+  dipakai, karena satu kode dipakai berulang oleh banyak siswa. Hanya
+  di-refresh manual kalau bendahara/admin curiga kode bocor.
+- Admin membuat kelas baru → `Admin\GroupController::store` → generate
+  kode undangan otomatis → admin lanjut `addTreasurer()` untuk menambahkan
+  1-2 akun bendahara ke kelas itu.
 
-Linux:
+## 3. Alur Pembayaran Kas
 
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/linux/8.5)"
-```
+Dua jalur pembayaran untuk satu `CashSchedule` (tagihan):
 
-After installation, ask the user to restart their terminal. If the agent needs the restarted shell to continue, ask the user to reopen their terminal and rerun their original prompt.
+**Jalur A — Tunai**: Siswa serahkan uang fisik ke bendahara di kelas.
+Bendahara input langsung lewat `CashIncomeController::storeCash`. Status
+langsung `verified` (uang sudah dipegang bendahara), `proof_image` null.
 
-## Agent Setup
+**Jalur B — QRIS mandiri**: Siswa scan QRIS kelas (gambar diambil dari
+`GroupSetting.qris_image` periode terbaru), transfer, lalu upload bukti
+lewat `CashIncomeController::storeQris`. Status masuk sebagai `pending`
+sampai bendahara mengecek mutasi rekening secara manual dan memverifikasi
+(`CashIncomeController::verify`, ubah ke `verified`/`rejected`).
 
-Install Laravel Boost from the application root before making application changes:
+**Aturan penting**: satu siswa TIDAK BOLEH punya lebih dari satu
+`CashIncome` berstatus `verified`/`pending` untuk `cash_schedule_id` yang
+sama (dicegah lewat `abortIfAlreadyPaid()` di kedua method `storeCash` &
+`storeQris`) — mencegah tagihan yang sama dibayar dobel.
 
-```sh
-composer require laravel/boost --dev
-php artisan boost:install
-```
+Notifikasi: submit QRIS → semua bendahara kelas dapat notifikasi
+(`CashIncomeSubmitted`). Verifikasi berhasil → siswa dapat notifikasi
+(`CashIncomeVerified`).
 
-Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
-</laravel-boost-guidelines>
+## 4. Struktur Data Kunci
+
+- `groups` — satu baris = satu kelas. Kolom: `name`, `invite_code`. TIDAK
+  ADA `qris_image` di sini (lihat catatan migrasi di bawah).
+- `periods` — referensi global (bukan per-kelas), mis. "Mingguan",
+  "Bulanan". Dikelola admin (`Admin\PeriodController`), dipakai semua kelas.
+- `group_settings` — pengaturan kas PER KELAS PER PERIODE: `cash_amount`,
+  `fine_amount`, DAN `qris_image`. Satu form pengaturan bendahara nulis ke
+  satu tabel ini — makanya `qris_image` sengaja di sini, bukan di `groups`
+  (migrasi `move_qris_image_column_to_group_settings_table` sudah
+  menjalankan perpindahan ini).
+- `cash_schedules` — daftar tagihan per kelas (`due_date`, `description`,
+  `amount`).
+- `cash_incomes` — riwayat pembayaran siswa. `payment_method`: `cash`|
+  `qris`. `status`: `pending`|`verified`|`rejected`.
+- `cash_expenses` — pengeluaran kas, wajib ada `proof_image` (foto nota).
+- `user_audits` — log otomatis tiap `users` diupdate (role/nama/email
+  berubah), dibuat oleh `UserObserver` — read-only, jangan pernah bikin
+  create/update/destroy manual untuk tabel ini.
+
+## 5. Konvensi Controller & Routing
+
+- Struktur folder controller per-role: `Admin/`, `Treasurer/`, `Student/`.
+  Controller yang levelnya "shared" (dipakai admin+treasurer+student atau
+  cuma treasurer+student) taruh di namespace milik yang paling banyak
+  action-nya, lalu expose route index-nya lewat middleware role gabungan
+  di `routes/web.php` (lihat grup `role:treasurer,student` di paling
+  bawah file itu).
+- Semua controller resource WAJIB scope query ke `group_id` milik user
+  yang login (`$request->user()->group_id`), KECUALI controller di bawah
+  namespace `Admin\` yang memang global (admin tidak punya `group_id`).
+- Pola otorisasi kepemilikan: method privat `authorizeOwnership()` yang
+  `abort_unless(...403)` kalau record bukan milik grup user. Ikuti pola
+  ini untuk controller baru.
+- Route model binding: SELALU beri nama parameter route yang sama persis
+  dengan nama variable di type-hint controller (mis. `{groupSetting}`,
+  bukan `{group_setting}`), supaya tidak kena masalah Laravel yang
+  snake_case-in nama parameter dari URL segment yang mengandung tanda "-".
+- Dashboard (`*/DashboardController::index`) & halaman siswa
+  (`Student\PaymentController::index`) me-render Blade view langsung
+  (server-rendered, data disiapkan di controller) untuk first paint cepat.
+  Endpoint CRUD lain (Group, User, CashSchedule, dst) tetap JSON API biasa,
+  dipanggil async (fetch) dari view supaya interaksi (verifikasi bayar,
+  ubah role, dst) tidak perlu reload halaman.
+
+## 6. Yang Belum Selesai / Sengaja Di-stub
+
+- **View Blade**: struktur folder sudah di-scaffold per role
+  (`resources/views/admin`, `treasurer`, `student`, dst) tapi isinya masih
+  kosong. Ini fase berikutnya.
+- **Export PDF/Excel** (`ReportController::exportPdf/exportExcel`): sengaja
+  return HTTP 501, nunggu `barryvdh/laravel-dompdf` &
+  `maatwebsite/excel` diinstall. UI harus visually disable tombol export
+  sampai ini aktif.
+- **Storage QRIS/proof image**: pakai `Storage::disk('public')`. Rencana
+  pindah ke Cloudinary lewat `.env` kalau deploy ke platform dengan
+  ephemeral filesystem (Render/Railway — BUKAN Vercel, Vercel tidak cocok
+  untuk Laravel karena tidak ada queue worker persisten & local storage).
+- **Notifikasi**: polling based (fetch berkala ke `NotificationController`),
+  belum ada WebSocket/real-time push.
+
+## 7. Kesalahan yang Sudah Pernah Terjadi (jangan diulang)
+
+- Jangan taruh `qris_image` di model `Group` — itu kolom `GroupSetting`.
+- Semua controller yang `extends Controller` WAJIB
+  `use App\Http\Controllers\Controller;` di namespace bertingkat
+  (`Admin\`, `Treasurer\`, `Student\`) — pernah kelewat di beberapa file
+  dan bikin fatal error "Class not found".
+- Jangan biarkan `Admin\GroupController` (atau controller admin lain)
+  ke-scope ke satu `group_id` — admin itu global, scoping seperti itu
+  salah arsitektur untuk role ini.
