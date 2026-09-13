@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\Group;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 
 class GroupController extends Controller
 {
@@ -20,7 +23,10 @@ class GroupController extends Controller
             'name' => ['required', 'string', 'max:255'],
         ]);
 
-        $group = Group::create($data);
+        $group = Group::create([
+            'name' => $data['name'],
+            'invite_code' => $this->generateInviteCode(),
+        ]);
 
         return response()->json($group, 201);
     }
@@ -38,48 +44,43 @@ class GroupController extends Controller
 
     public function destroy(Group $group)
     {
-        if ($group->qris_image) {
-            Storage::disk('public')->delete($group->qris_image);
-        }
-
         $group->delete();
 
         return response()->noContent();
     }
 
-    public function uploadQris(Request $request)
+    public function refreshInviteCode(Group $group)
     {
-        $request->validate([
-            'qris_image' => ['required', 'image', 'max:2048'],
-        ]);
+        $group->update(['invite_code' => $this->generateInviteCode()]);
 
-        $group = $request->user()->group;
-
-        abort_if(! $group, 404, 'Anda belum terdaftar di kelas manapun.');
-
-        if ($group->qris_image) {
-            Storage::disk('public')->delete($group->qris_image);
-        }
-
-        $path = $request->file('qris_image')->store('qris', 'public');
-
-        $group->update(['qris_image' => $path]);
-
-        return response()->json($group->fresh());
+        return response()->json(['invite_code' => $group->invite_code]);
     }
 
-    public function refreshInviteCode(Request $request)
+    public function addTreasurer(Request $request, Group $group)
     {
-        $group = $request->user()->group;
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:users,email'],
+            'password' => ['required', 'string', Password::defaults()],
+        ]);
 
-        abort_if(! $group, 404, 'Anda belum terdaftar di kelas manapun.');
+        $treasurer = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+            'group_id' => $group->id,
+            'role' => 'treasurer',
+        ]);
 
+        return response()->json($treasurer, 201);
+    }
+
+    private function generateInviteCode(): string
+    {
         do {
             $code = Str::upper(Str::random(6));
-        } while (\App\Models\Group::where('invite_code', $code)->exists());
+        } while (Group::where('invite_code', $code)->exists());
 
-        $group->update(['invite_code' => $code]);
-
-        return response()->json(['invite_code' => $code]);
+        return $code;
     }
 }

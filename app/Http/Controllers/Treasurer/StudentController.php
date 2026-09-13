@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Treasurer;
 
+use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -9,9 +10,6 @@ use Illuminate\Validation\Rules\Password;
 
 class StudentController extends Controller
 {
-    /**
-     * Bendahara: lihat daftar siswa di kelasnya sendiri.
-     */
     public function index(Request $request)
     {
         return User::where('group_id', $request->user()->group_id)
@@ -20,11 +18,14 @@ class StudentController extends Controller
             ->paginate(20);
     }
 
-    /**
-     * Bendahara: tambah siswa baru.
-     * group_id SENGAJA tidak diambil dari input — otomatis dikunci
-     * sama dengan kelas bendahara yang sedang login, sesuai alur.
-     */
+    public function members(Request $request)
+    {
+        return User::where('group_id', $request->user()->group_id)
+            ->whereIn('role', ['student', 'treasurer'])
+            ->latest('id')
+            ->get();
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -56,6 +57,25 @@ class StudentController extends Controller
         $student->update($data);
 
         return response()->json($student);
+    }
+
+    public function changeRole(Request $request, User $member)
+    {
+        $treasurer = $request->user();
+
+        abort_unless(
+            $member->group_id === $treasurer->group_id && in_array($member->role, ['student', 'treasurer'], true),
+            403
+        );
+        abort_if($member->id === $treasurer->id, 422, 'Tidak bisa mengubah role akun sendiri.');
+
+        $data = $request->validate([
+            'role' => ['required', 'in:student,treasurer'],
+        ]);
+
+        $member->update(['role' => $data['role']]);
+
+        return response()->json($member->fresh());
     }
 
     public function destroy(Request $request, User $student)

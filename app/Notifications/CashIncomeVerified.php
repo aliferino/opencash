@@ -6,9 +6,6 @@ use App\Models\CashIncome;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
-/**
- * Dikirim ke siswa saat bendahara memverifikasi pembayaran QRIS-nya.
- */
 class CashIncomeVerified extends Notification
 {
     use Queueable;

@@ -12,19 +12,11 @@ class Period extends Model
 
     public $timestamps = false;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
         'interval_days',
     ];
 
-    /**
-     * @return HasMany<GroupSetting, $this>
-     */
     public function groupSettings(): HasMany
     {
         return $this->hasMany(GroupSetting::class);

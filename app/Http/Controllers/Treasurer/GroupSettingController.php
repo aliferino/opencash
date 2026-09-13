@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Treasurer;
 
+use App\Http\Controllers\Controller;
 use App\Models\GroupSetting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class GroupSettingController extends Controller
 {
-    /**
-     * Bendahara: lihat pengaturan nominal kas & denda kelasnya per periode.
-     */
     public function index(Request $request)
     {
         return GroupSetting::where('group_id', $request->user()->group_id)
@@ -17,10 +16,6 @@ class GroupSettingController extends Controller
             ->get();
     }
 
-    /**
-     * Bendahara: atur/ubah nominal kas & denda untuk sebuah periode.
-     * Kalau pengaturan untuk periode itu sudah ada, akan di-update (bukan duplikat).
-     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -64,6 +59,25 @@ class GroupSettingController extends Controller
         $groupSetting->delete();
 
         return response()->noContent();
+    }
+
+    public function uploadQris(Request $request, GroupSetting $groupSetting)
+    {
+        $this->authorizeOwnership($request, $groupSetting);
+
+        $request->validate([
+            'qris_image' => ['required', 'image', 'max:2048'],
+        ]);
+
+        if ($groupSetting->qris_image) {
+            Storage::disk('public')->delete($groupSetting->qris_image);
+        }
+
+        $path = $request->file('qris_image')->store('qris', 'public');
+
+        $groupSetting->update(['qris_image' => $path]);
+
+        return response()->json($groupSetting->fresh());
     }
 
     private function authorizeOwnership(Request $request, GroupSetting $groupSetting): void

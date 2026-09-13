@@ -10,11 +10,6 @@ class CashExpense extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'group_id',
         'treasurer_id',
@@ -32,17 +27,11 @@ class CashExpense extends Model
         ];
     }
 
-    /**
-     * @return BelongsTo<Group, $this>
-     */
     public function group(): BelongsTo
     {
         return $this->belongsTo(Group::class);
     }
 
-    /**
-     * @return BelongsTo<User, $this>
-     */
     public function treasurer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'treasurer_id');

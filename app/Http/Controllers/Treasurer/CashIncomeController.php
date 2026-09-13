@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Treasurer;
 
+use App\Http\Controllers\Controller;
 use App\Models\CashIncome;
 use App\Models\CashSchedule;
 use App\Models\User;
@@ -11,10 +12,6 @@ use Illuminate\Http\Request;
 
 class CashIncomeController extends Controller
 {
-    /**
-     * Bendahara melihat seluruh riwayat pemasukan satu kelas.
-     * Siswa hanya melihat riwayat pembayarannya sendiri.
-     */
     public function index(Request $request)
     {
         $user = $request->user();
@@ -29,12 +26,6 @@ class CashIncomeController extends Controller
         return $query->latest('id')->paginate(20);
     }
 
-    /**
-     * Jalur A — Pembayaran Tunai.
-     * Siswa serahkan uang fisik ke bendahara, bendahara input langsung.
-     * Status langsung 'verified' karena uang sudah dipegang bendahara,
-     * dan proof_image dibiarkan kosong.
-     */
     public function storeCash(Request $request)
     {
         $data = $request->validate([
@@ -56,6 +47,8 @@ class CashIncomeController extends Controller
             403
         );
 
+        $this->abortIfAlreadyPaid($schedule->id, $student->id);
+
         $income = CashIncome::create([
             'cash_schedule_id' => $schedule->id,
             'student_id' => $student->id,
@@ -71,11 +64,6 @@ class CashIncomeController extends Controller
         return response()->json($income, 201);
     }
 
-    /**
-     * Jalur B — Pembayaran QRIS mandiri oleh siswa.
-     * Status masuk sebagai 'pending' sampai bendahara mengecek mutasi
-     * dan memverifikasinya secara manual.
-     */
     public function storeQris(Request $request)
     {
         $student = $request->user();
@@ -90,6 +78,8 @@ class CashIncomeController extends Controller
 
         $schedule = CashSchedule::findOrFail($data['cash_schedule_id']);
         abort_unless($schedule->group_id === $student->group_id, 403);
+
+        $this->abortIfAlreadyPaid($schedule->id, $student->id);
 
         $path = $request->file('proof_image')->store('proofs/incomes', 'public');
 
@@ -106,7 +96,6 @@ class CashIncomeController extends Controller
             'status' => 'pending',
         ]);
 
-        // Lonceng notifikasi bendahara berbunyi.
         User::where('group_id', $student->group_id)
             ->where('role', 'treasurer')
             ->get()
@@ -115,10 +104,6 @@ class CashIncomeController extends Controller
         return response()->json($income, 201);
     }
 
-    /**
-     * Bendahara memverifikasi atau menolak pembayaran QRIS yang pending,
-     * setelah mengecek mutasi rekening secara manual.
-     */
     public function verify(Request $request, CashIncome $cashIncome)
     {
         $treasurer = $request->user();
@@ -138,10 +123,19 @@ class CashIncomeController extends Controller
         ]);
 
         if ($data['status'] === 'verified') {
-            // Lonceng notifikasi siswa berbunyi.
             $cashIncome->student->notify(new CashIncomeVerified($cashIncome));
         }
 
         return response()->json($cashIncome->fresh());
+    }
+
+    private function abortIfAlreadyPaid(int $cashScheduleId, int $studentId): void
+    {
+        $alreadyExists = CashIncome::where('cash_schedule_id', $cashScheduleId)
+            ->where('student_id', $studentId)
+            ->whereIn('status', ['verified', 'pending'])
+            ->exists();
+
+        abort_if($alreadyExists, 422, 'Tagihan ini sudah dibayar atau sedang menunggu verifikasi.');
     }
 }

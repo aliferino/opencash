@@ -10,16 +10,12 @@ class GroupSetting extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'group_id',
         'period_id',
         'cash_amount',
         'fine_amount',
+        'qris_image',
     ];
 
     protected function casts(): array
@@ -30,17 +26,11 @@ class GroupSetting extends Model
         ];
     }
 
-    /**
-     * @return BelongsTo<Group, $this>
-     */
     public function group(): BelongsTo
     {
         return $this->belongsTo(Group::class);
     }
 
-    /**
-     * @return BelongsTo<Period, $this>
-     */
     public function period(): BelongsTo
     {
         return $this->belongsTo(Period::class);

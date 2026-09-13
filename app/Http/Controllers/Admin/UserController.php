@@ -10,30 +10,39 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        return User::where('group_id', $request->user()->group_id)
-            ->latest('id')
-            ->paginate(15);
+        $query = User::query();
+
+        if ($request->filled('group_id')) {
+            $query->where('group_id', $request->integer('group_id'));
+        }
+
+        if ($request->filled('role')) {
+            $query->where('role', $request->string('role'));
+        }
+
+        return $query->latest('id')->paginate(15);
     }
 
     public function update(Request $request, User $user)
     {
-        abort_unless($user->group_id === $request->user()->group_id, 403);
-
         $data = $request->validate([
             'role' => ['required', 'in:admin,treasurer,student'],
+            'group_id' => ['nullable', 'exists:groups,id'],
         ]);
+
+        if ($data['role'] === 'admin') {
+            $data['group_id'] = null;
+        }
 
         $user->update($data);
 
         return response()->json($user);
     }
 
-    public function destroy(Request $request, User $user)
+    public function destroy(User $user)
     {
-        abort_unless($user->group_id === $request->user()->group_id, 403);
-
         $user->update(['group_id' => null, 'role' => null]);
 
-        return response()->json(['message' => 'User dikeluarkan dari grup.']);
+        return response()->json(['message' => 'User dikeluarkan dari kelas.']);
     }
 }

@@ -10,11 +10,6 @@ class CashIncome extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'cash_schedule_id',
         'student_id',
@@ -37,29 +32,16 @@ class CashIncome extends Model
         ];
     }
 
-    /**
-     * @return BelongsTo<CashSchedule, $this>
-     */
     public function cashSchedule(): BelongsTo
     {
         return $this->belongsTo(CashSchedule::class);
     }
 
-    /**
-     * The student who made the payment.
-     *
-     * @return BelongsTo<User, $this>
-     */
     public function student(): BelongsTo
     {
         return $this->belongsTo(User::class, 'student_id');
     }
 
-    /**
-     * The treasurer who verified/recorded the payment.
-     *
-     * @return BelongsTo<User, $this>
-     */
     public function treasurer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'treasurer_id');

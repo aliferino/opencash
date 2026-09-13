@@ -6,10 +6,6 @@ use App\Models\User;
 use App\Models\UserAudit;
 use Illuminate\Support\Facades\Auth;
 
-/**
- * Mencatat setiap perubahan pada data users ke tabel user_audits,
- * supaya admin bisa lacak "siapa mengubah apa, kapan" jika ada komplain.
- */
 class UserObserver
 {
     public function updated(User $user): void

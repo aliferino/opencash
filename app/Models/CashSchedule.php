@@ -11,11 +11,6 @@ class CashSchedule extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'group_id',
         'due_date',
@@ -31,17 +26,11 @@ class CashSchedule extends Model
         ];
     }
 
-    /**
-     * @return BelongsTo<Group, $this>
-     */
     public function group(): BelongsTo
     {
         return $this->belongsTo(Group::class);
     }
 
-    /**
-     * @return HasMany<CashIncome, $this>
-     */
     public function cashIncomes(): HasMany
     {
         return $this->hasMany(CashIncome::class);

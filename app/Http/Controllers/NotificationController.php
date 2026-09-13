@@ -6,9 +6,6 @@ use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
-    /**
-     * Dipanggil AJAX/Fetch API untuk update lonceng notifikasi tanpa refresh.
-     */
     public function index(Request $request)
     {
         $user = $request->user();

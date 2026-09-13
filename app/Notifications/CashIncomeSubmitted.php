@@ -6,9 +6,6 @@ use App\Models\CashIncome;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
-/**
- * Dikirim ke semua bendahara satu kelas saat siswa mengunggah bukti QRIS.
- */
 class CashIncomeSubmitted extends Notification
 {
     use Queueable;

@@ -2,16 +2,13 @@
 
 namespace App\Http\Controllers\Treasurer;
 
+use App\Http\Controllers\Controller;
 use App\Models\CashExpense;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class CashExpenseController extends Controller
 {
-    /**
-     * Semua peran (admin/bendahara/siswa) bisa lihat riwayat pengeluaran
-     * beserta foto notanya — transparansi kas kelas.
-     */
     public function index(Request $request)
     {
         return CashExpense::where('group_id', $request->user()->group_id)
@@ -19,9 +16,6 @@ class CashExpenseController extends Controller
             ->paginate(20);
     }
 
-    /**
-     * Bendahara mencatat pengeluaran kas. Foto nota/struk WAJIB diunggah.
-     */
     public function store(Request $request)
     {
         $treasurer = $request->user();

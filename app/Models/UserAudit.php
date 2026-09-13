@@ -12,11 +12,6 @@ class UserAudit extends Model
 
     public $timestamps = false;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'user_id',
         'updated_by',
@@ -34,21 +29,11 @@ class UserAudit extends Model
         ];
     }
 
-    /**
-     * The user this audit entry is about.
-     *
-     * @return BelongsTo<User, $this>
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * The user who performed the change.
-     *
-     * @return BelongsTo<User, $this>
-     */
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');

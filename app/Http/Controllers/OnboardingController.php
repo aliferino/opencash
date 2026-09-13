@@ -19,22 +19,6 @@ class OnboardingController extends Controller
         return view('onboarding.waiting-group');
     }
 
-    public function createGroup(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
-
-        $group = Group::create($data);
-
-        $request->user()->update([
-            'group_id' => $group->id,
-            'role' => 'admin',
-        ]);
-
-        return redirect()->route('dashboard');
-    }
-
     public function join(Request $request): RedirectResponse
     {
         $data = $request->validate([
@@ -47,7 +31,7 @@ class OnboardingController extends Controller
 
         if (! $group) {
             return back()->withErrors([
-                'invite_code' => 'Kode tidak valid atau sudah kadaluarsa.',
+                'invite_code' => 'Kode tidak valid.',
             ]);
         }
 
@@ -55,8 +39,6 @@ class OnboardingController extends Controller
             'group_id' => $group->id,
             'role' => 'student',
         ]);
-
-        $group->update(['invite_code' => null]);
 
         return redirect()->route('dashboard');
     }

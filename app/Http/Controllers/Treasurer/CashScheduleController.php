@@ -2,17 +2,13 @@
 
 namespace App\Http\Controllers\Treasurer;
 
+use App\Http\Controllers\Controller;
 use App\Models\CashIncome;
 use App\Models\CashSchedule;
 use Illuminate\Http\Request;
 
 class CashScheduleController extends Controller
 {
-    /**
-     * Semua peran melihat daftar tagihan kelasnya.
-     * Untuk siswa, setiap tagihan diberi flag `is_paid` supaya dashboard
-     * bisa menampilkan status "Tagihan Belum Dibayar".
-     */
     public function index(Request $request)
     {
         $user = $request->user();
@@ -34,10 +30,6 @@ class CashScheduleController extends Controller
         return response()->json($schedules);
     }
 
-    /**
-     * Bendahara: buat jadwal tagihan baru (mis. "Kas Minggu Pertama").
-     * Otomatis muncul di dashboard seluruh siswa satu kelas.
-     */
     public function store(Request $request)
     {
         $data = $request->validate([

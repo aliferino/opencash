@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Treasurer;
 
+use App\Http\Controllers\Controller;
 use App\Models\CashExpense;
 use App\Models\CashIncome;
 use App\Models\User;
@@ -9,10 +10,6 @@ use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
-    /**
-     * Saldo kas real-time: total pemasukan yang sudah 'verified'
-     * dikurangi total pengeluaran, khusus kelas milik user yang login.
-     */
     public function balance(Request $request)
     {
         $groupId = $request->user()->group_id;
@@ -31,9 +28,6 @@ class ReportController extends Controller
         ]);
     }
 
-    /**
-     * Laporan spesifik per siswa (untuk difilter bendahara di menu Laporan).
-     */
     public function studentReport(Request $request, User $student)
     {
         abort_unless($student->group_id === $request->user()->group_id, 403);
@@ -50,9 +44,6 @@ class ReportController extends Controller
         ]);
     }
 
-    /**
-     * Laporan global satu kelas (pemasukan + pengeluaran).
-     */
     public function groupReport(Request $request)
     {
         $groupId = $request->user()->group_id;
@@ -66,12 +57,6 @@ class ReportController extends Controller
         ]);
     }
 
-    /**
-     * NOTE: export PDF/Excel butuh package tambahan, belum ter-install di project ini:
-     *   composer require barryvdh/laravel-dompdf
-     *   composer require maatwebsite/excel
-     * Setelah dipasang, tinggal build view/export class dan panggil di sini.
-     */
     public function exportPdf(Request $request)
     {
         abort(501, 'Export PDF belum aktif — install barryvdh/laravel-dompdf terlebih dahulu.');
