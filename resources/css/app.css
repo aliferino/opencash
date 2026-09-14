@@ -6,4 +6,24 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-bg: #070b18;
+    --color-surface: #101935;
+    --color-ink: #f5f7fc;
+    --color-muted: #92a0c0;
+    --color-accent: #3e7bff;
+    --color-accent-bright: #86b4ff;
+    --color-accent-tint: rgba(62, 123, 255, 0.16);
+    --color-line: rgba(255, 255, 255, 0.08);
+}
+
+@layer base {
+    body {
+        background-color: var(--color-bg);
+        background-image:
+            radial-gradient(1100px 620px at 88% -8%, rgba(62, 123, 255, 0.32), transparent 60%),
+            radial-gradient(760px 520px at -8% 55%, rgba(62, 123, 255, 0.14), transparent 60%);
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }
 }
