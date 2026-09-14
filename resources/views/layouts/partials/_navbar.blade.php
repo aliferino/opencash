@@ -6,36 +6,42 @@
                     <path d="M4 10.5 8 14l8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </span>
-            <span class="text-[17px] font-semibold tracking-tight text-ink">OpenCash</span>
+            <span class="text-[17px] font-semibold tracking-tight text-ink">Open<span class="text-accent">Cash</span></span>
         </a>
 
         <nav class="hidden items-center gap-8 text-[15px] md:flex">
             <a
                 href="{{ route('home') }}"
-                class="transition-colors hover:text-accent-bright {{ request()->routeIs('home') ? 'font-medium text-accent-bright' : 'text-muted' }}"
+                class="transition-colors hover:text-accent-bright {{ request()->routeIs('home') ? 'font-medium text-accent-bright' : 'text-ink' }}"
             >
                 Beranda
             </a>
             <a
                 href="{{ route('about') }}"
-                class="transition-colors hover:text-accent-bright {{ request()->routeIs('about') ? 'font-medium text-accent-bright' : 'text-muted' }}"
+                class="transition-colors hover:text-accent-bright {{ request()->routeIs('about') ? 'font-medium text-accent-bright' : 'text-ink' }}"
             >
                 Tentang
             </a>
             <a
                 href="{{ route('works') }}"
-                class="transition-colors hover:text-accent-bright {{ request()->routeIs('works') ? 'font-medium text-accent-bright' : 'text-muted' }}"
+                class="transition-colors hover:text-accent-bright {{ request()->routeIs('works') ? 'font-medium text-accent-bright' : 'text-ink' }}"
             >
-                Karya
+                Cara Kerja
             </a>
         </nav>
 
-        <div class="hidden md:block">
+        <div class="hidden items-center gap-3 md:flex">
             <a
                 href="{{ route('login') }}"
-                class="rounded-md bg-white/5 px-4 py-2 text-[15px] font-medium text-ink transition-colors hover:bg-white/10"
+                class="px-3 py-2 text-[15px] font-medium text-ink transition-colors hover:text-accent-bright"
             >
                 Masuk
+            </a>
+            <a
+                href="{{ route('register') }}"
+                class="rounded-md bg-accent px-4 py-2 text-[15px] font-medium text-white transition-colors hover:bg-accent-bright hover:text-[#070b18]"
+            >
+                Daftar
             </a>
         </div>
 
@@ -60,8 +66,16 @@
         <nav class="flex flex-col gap-4 text-[15px]">
             <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'font-medium text-accent-bright' : 'text-muted' }}">Beranda</a>
             <a href="{{ route('about') }}" class="{{ request()->routeIs('about') ? 'font-medium text-accent-bright' : 'text-muted' }}">Tentang</a>
-            <a href="{{ route('works') }}" class="{{ request()->routeIs('works') ? 'font-medium text-accent-bright' : 'text-muted' }}">Karya</a>
-            <a href="{{ route('login') }}" class="font-medium text-accent-bright">Masuk</a>
+            <a href="{{ route('works') }}" class="{{ request()->routeIs('works') ? 'font-medium text-accent-bright' : 'text-muted' }}">Cara Kerja</a>
+            <div class="mt-2 flex flex-col gap-3 border-t border-line pt-4">
+                <a href="{{ route('login') }}" class="font-medium text-ink">Masuk</a>
+                <a
+                    href="{{ route('register') }}"
+                    class="rounded-md bg-accent px-4 py-2.5 text-center font-medium text-white"
+                >
+                    Daftar
+                </a>
+            </div>
         </nav>
     </div>
 </header>

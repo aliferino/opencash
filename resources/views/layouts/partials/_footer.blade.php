@@ -8,7 +8,7 @@
                             <path d="M4 10.5 8 14l8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </span>
-                    <span class="text-[17px] font-semibold tracking-tight text-ink">OpenCash</span>
+                    <span class="text-[17px] font-semibold tracking-tight text-ink">Open<span class="text-accent">Cash</span></span>
                 </a>
                 <p class="mt-4 max-w-xs text-[15px] leading-relaxed text-muted">
                     Kas kelas yang tercatat rapi dan bisa dilihat semua siswa, bukan cuma bendahara.
