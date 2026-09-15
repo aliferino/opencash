@@ -12,9 +12,19 @@ use Illuminate\Validation\Rules\Password;
 
 class GroupController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Group::withCount('users')->latest('id')->paginate(15);
+        if ($request->wantsJson()) {
+            $query = Group::withCount('users')->latest('id');
+
+            if ($request->filled('search')) {
+                $query->where('name', 'like', '%' . $request->string('search') . '%');
+            }
+
+            return $query->paginate(15);
+        }
+
+        return view('admin.groups.index');
     }
 
     public function store(Request $request)

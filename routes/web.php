@@ -84,6 +84,7 @@ Route::middleware('auth')->group(function () {
         Route::post('groups/{group}/treasurers', [AdminGroupController::class, 'addTreasurer'])->name('groups.treasurers.store');
 
         Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
+        Route::post('users', [AdminUserController::class, 'store'])->name('users.store');
         Route::put('users/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::delete('users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
 
