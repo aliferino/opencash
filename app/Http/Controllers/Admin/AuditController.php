@@ -20,6 +20,18 @@ class AuditController extends Controller
             $query->whereHas('user', fn ($q) => $q->where('group_id', $request->integer('group_id')));
         }
 
-        return $query->latest('created_at')->paginate(20);
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->whereHas('user', fn ($q) => $q->where('name', 'like', '%' . $search . '%')
+                ->orWhere('email', 'like', '%' . $search . '%'));
+        }
+
+        $query->latest('created_at');
+
+        if ($request->wantsJson()) {
+            return $query->paginate(20);
+        }
+
+        return view('admin.audits.index');
     }
 }

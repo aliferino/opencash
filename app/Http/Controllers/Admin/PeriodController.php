@@ -8,9 +8,19 @@ use Illuminate\Http\Request;
 
 class PeriodController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Period::latest('id')->get();
+        if ($request->wantsJson()) {
+            $query = Period::withCount('groupSettings')->latest('id');
+
+            if ($request->filled('search')) {
+                $query->where('name', 'like', '%' . $request->string('search') . '%');
+            }
+
+            return $query->get();
+        }
+
+        return view('admin.periods.index');
     }
 
     public function store(Request $request)
