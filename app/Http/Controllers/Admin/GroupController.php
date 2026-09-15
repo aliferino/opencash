@@ -27,6 +27,13 @@ class GroupController extends Controller
         return view('admin.groups.index');
     }
 
+    public function show(Group $group)
+    {
+        $group->loadCount('users');
+
+        return view('admin.groups._detail', ['group' => $group]);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -49,7 +56,10 @@ class GroupController extends Controller
 
         $group->update($data);
 
-        return response()->json($group);
+        return response()->json([
+            ...$group->toArray(),
+            'updated_at_human' => optional($group->updated_at)->format('d M Y, H:i'),
+        ]);
     }
 
     public function destroy(Group $group)
@@ -66,23 +76,39 @@ class GroupController extends Controller
         return response()->json(['invite_code' => $group->invite_code]);
     }
 
-    public function addTreasurer(Request $request, Group $group)
+    public function addMember(Request $request, Group $group)
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', Password::defaults()],
+            'role' => ['required', 'in:treasurer,student'],
         ]);
 
-        $treasurer = User::create([
+        $member = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'group_id' => $group->id,
-            'role' => 'treasurer',
+            'role' => $data['role'],
         ]);
 
-        return response()->json($treasurer, 201);
+        return response()->json($member, 201);
+    }
+
+    public function attachMember(Request $request, Group $group)
+    {
+        $data = $request->validate([
+            'user_id' => ['required', 'exists:users,id'],
+        ]);
+        
+        $user = User::whereNull('group_id')
+            ->whereIn('role', ['treasurer', 'student'])
+            ->findOrFail($data['user_id']);
+
+        $user->update(['group_id' => $group->id]);
+
+        return response()->json($user);
     }
 
     private function generateInviteCode(): string

@@ -1,7 +1,7 @@
 <div id="group-create-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 px-4">
     <div class="w-full max-w-md rounded-2xl border border-line bg-surface p-6">
         <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-ink">Tambah Kelas</h2>
+            <h2 class="text-lg font-semibold text-ink">Tambah Grup</h2>
             <button type="button" id="group-create-close" class="rounded-md p-1.5 text-muted transition-colors hover:bg-white/5 hover:text-ink">
                 <i data-lucide="x" class="h-4 w-4" stroke-width="1.8"></i>
             </button>
@@ -9,8 +9,8 @@
 
         <form id="group-create-form" class="mt-5 space-y-4">
             <div>
-                <label for="group-name" class="text-[13px] font-medium text-ink">Nama Kelas</label>
-                <input type="text" id="group-name" required class="mt-1.5 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-[14px] text-ink outline-none focus:border-accent" placeholder="Contoh: Kelas 9A" />
+                <label for="group-name" class="text-[13px] font-medium text-ink">Nama Grup</label>
+                <input type="text" id="group-name" required class="mt-1.5 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-[14px] text-ink outline-none focus:border-accent" placeholder="Contoh: XII RPL 1" />
             </div>
 
             <p id="group-create-error" class="hidden text-[13px] text-red-400"></p>
@@ -47,6 +47,7 @@
         openBtn.addEventListener('click', open);
         closeBtn.addEventListener('click', close);
         cancelBtn.addEventListener('click', close);
+        modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
 
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -70,7 +71,7 @@
                     window.dispatchEvent(new CustomEvent('groups:refresh'));
                 })
                 .catch(function (data) {
-                    var msg = (data && data.message) || 'Gagal menyimpan kelas.';
+                    var msg = (data && data.message) || 'Gagal menyimpan grup.';
                     if (data && data.errors) {
                         var first = Object.values(data.errors)[0];
                         if (first && first[0]) msg = first[0];

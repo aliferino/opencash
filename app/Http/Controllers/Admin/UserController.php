@@ -22,6 +22,10 @@ class UserController extends Controller
             $query->where('role', $request->string('role'));
         }
 
+        if ($request->boolean('unassigned')) {
+            $query->whereNull('group_id')->whereIn('role', ['treasurer', 'student']);
+        }
+
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->string('search') . '%');
         }
@@ -29,7 +33,7 @@ class UserController extends Controller
         $query->latest('id');
 
         if ($request->wantsJson()) {
-            return $query->paginate(15);
+            return $query->paginate($request->integer('per_page', 15));
         }
 
         return view('admin.users.index');
@@ -42,15 +46,14 @@ class UserController extends Controller
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', Password::defaults()],
             'role' => ['required', 'in:admin,treasurer,student'],
-            'group_id' => ['nullable', 'required_unless:role,admin', 'exists:groups,id'],
         ]);
-
+        
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'role' => $data['role'],
-            'group_id' => $data['role'] === 'admin' ? null : $data['group_id'],
+            'group_id' => null,
         ]);
 
         return response()->json($user, 201);
@@ -59,23 +62,37 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:users,email,' . $user->id],
+            'password' => ['nullable', 'string', Password::defaults()],
             'role' => ['required', 'in:admin,treasurer,student'],
-            'group_id' => ['nullable', 'exists:groups,id'],
         ]);
 
-        if ($data['role'] === 'admin') {
-            $data['group_id'] = null;
+        $payload = [
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'role' => $data['role'],
+        ];
+
+        if ($request->filled('password')) {
+            $payload['password'] = Hash::make($data['password']);
         }
 
-        $user->update($data);
+        if ($data['role'] === 'admin') {
+            $payload['group_id'] = null;
+        }
+
+        $user->update($payload);
 
         return response()->json($user);
     }
 
-    public function destroy(User $user)
+    public function destroy(Request $request, User $user)
     {
-        $user->update(['group_id' => null, 'role' => null]);
+        abort_if($user->id === $request->user()->id, 422, 'Tidak bisa menghapus akun sendiri.');
 
-        return response()->json(['message' => 'User dikeluarkan dari kelas.']);
+        $user->delete();
+
+        return response()->json(['message' => 'Pengguna berhasil dihapus.']);
     }
 }

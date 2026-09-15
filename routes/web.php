@@ -78,10 +78,12 @@ Route::middleware('auth')->group(function () {
 
         Route::get('groups', [AdminGroupController::class, 'index'])->name('groups.index');
         Route::post('groups', [AdminGroupController::class, 'store'])->name('groups.store');
+        Route::get('groups/{group}', [AdminGroupController::class, 'show'])->name('groups.show');
         Route::put('groups/{group}', [AdminGroupController::class, 'update'])->name('groups.update');
         Route::delete('groups/{group}', [AdminGroupController::class, 'destroy'])->name('groups.destroy');
         Route::post('groups/{group}/invite-code/refresh', [AdminGroupController::class, 'refreshInviteCode'])->name('groups.invite-code.refresh');
-        Route::post('groups/{group}/treasurers', [AdminGroupController::class, 'addTreasurer'])->name('groups.treasurers.store');
+        Route::post('groups/{group}/members', [AdminGroupController::class, 'addMember'])->name('groups.members.store');
+        Route::post('groups/{group}/members/attach', [AdminGroupController::class, 'attachMember'])->name('groups.members.attach');
 
         Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
         Route::post('users', [AdminUserController::class, 'store'])->name('users.store');

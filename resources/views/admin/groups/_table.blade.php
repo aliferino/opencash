@@ -1,13 +1,22 @@
-<div class="mt-6 max-w-sm">
-    <div class="relative">
+<div class="mt-6 flex items-center justify-between gap-3">
+    <div class="relative max-w-sm flex-1">
         <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" stroke-width="1.8"></i>
         <input
             type="text"
             id="groups-search"
-            placeholder="Cari nama kelas..."
+            placeholder="Cari nama grup..."
             class="w-full rounded-md border border-line bg-surface py-2.5 pl-9 pr-3 text-[14px] text-ink placeholder:text-muted outline-none focus:border-accent"
         />
     </div>
+
+    <button
+        type="button"
+        id="group-create-open"
+        class="flex shrink-0 items-center gap-2 rounded-md bg-accent px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-accent-bright hover:text-[#070b18]"
+    >
+        <i data-lucide="plus" class="h-4 w-4" stroke-width="2"></i>
+        Grup
+    </button>
 </div>
 
 <div
@@ -18,7 +27,7 @@
     <table class="w-full text-left text-[14px]">
         <thead>
             <tr class="border-b border-line text-xs uppercase tracking-wide text-muted">
-                <th class="px-6 py-4 font-medium">Nama Kelas</th>
+                <th class="px-6 py-4 font-medium">Nama grup</th>
                 <th class="px-6 py-4 font-medium">Kode Undangan</th>
                 <th class="px-6 py-4 font-medium">Anggota</th>
                 <th class="px-6 py-4 font-medium text-right">Aksi</th>
@@ -52,6 +61,15 @@
         var page = 1;
         var searchTimer = null;
 
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function emptyRow(text) {
             return '<tr><td colspan="4" class="px-6 py-10 text-center text-muted">' + text + '</td></tr>';
         }
@@ -59,13 +77,17 @@
         function renderRow(group) {
             return '' +
                 '<tr class="transition-colors hover:bg-white/5">' +
-                    '<td class="px-6 py-4 font-medium text-ink">' + group.name + '</td>' +
-                    '<td class="px-6 py-4 font-mono text-[13px] text-muted">' + group.invite_code + '</td>' +
+                    '<td class="px-6 py-4 font-medium text-ink">' + escapeHtml(group.name) + '</td>' +
+                    '<td class="px-6 py-4 font-mono text-[13px] text-muted">' + escapeHtml(group.invite_code) + '</td>' +
                     '<td class="px-6 py-4"><span class="rounded-full bg-accent-tint px-2.5 py-1 text-xs font-medium text-accent-bright">' + group.users_count + ' anggota</span></td>' +
                     '<td class="px-6 py-4 text-right">' +
-                        '<button type="button" class="rounded-md p-2 text-muted transition-colors hover:bg-white/5 hover:text-ink" title="Kelola">' +
+                        '<a ' +
+                            'href="' + endpoint + '/' + group.id + '" ' +
+                            'class="inline-flex rounded-md p-2 text-muted transition-colors hover:bg-white/5 hover:text-ink" ' +
+                            'title="Kelola"' +
+                        '>' +
                             '<i data-lucide="ellipsis" class="h-4 w-4" stroke-width="1.8"></i>' +
-                        '</button>' +
+                        '</a>' +
                     '</td>' +
                 '</tr>';
         }
@@ -85,9 +107,9 @@
 
                     body.innerHTML = json.data.length
                         ? json.data.map(renderRow).join('')
-                        : emptyRow('Belum ada kelas.');
+                        : emptyRow('Belum ada grup.');
 
-                    info.textContent = 'Menampilkan ' + json.data.length + ' dari ' + json.total + ' kelas — halaman ' + json.current_page + ' dari ' + json.last_page;
+                    info.textContent = 'Menampilkan ' + json.data.length + ' dari ' + json.total + ' grup — halaman ' + json.current_page + ' dari ' + json.last_page;
                     prevBtn.disabled = !json.prev_page_url;
                     nextBtn.disabled = !json.next_page_url;
 

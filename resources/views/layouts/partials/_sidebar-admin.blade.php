@@ -18,7 +18,7 @@
 
         <a href="{{ route('admin.groups.index') }}" class="flex items-center gap-3 rounded-md px-3 py-2.5 text-[15px] transition-colors {{ request()->routeIs('admin.groups.*') ? 'bg-accent-tint font-medium text-accent-bright' : 'text-muted hover:bg-white/5 hover:text-ink' }}">
             <i data-lucide="building-2" class="h-[18px] w-[18px] shrink-0" stroke-width="1.8"></i>
-            Kelas
+            Grup
         </a>
 
         <a href="{{ route('admin.users.index') }}" class="flex items-center gap-3 rounded-md px-3 py-2.5 text-[15px] transition-colors {{ request()->routeIs('admin.users.*') ? 'bg-accent-tint font-medium text-accent-bright' : 'text-muted hover:bg-white/5 hover:text-ink' }}">

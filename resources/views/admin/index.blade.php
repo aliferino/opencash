@@ -5,7 +5,7 @@
 @section('panel')
     <div class="mb-8">
         <h1 class="text-2xl font-semibold tracking-tight text-ink">Dashboard</h1>
-        <p class="mt-1 text-[15px] text-muted">Ringkasan seluruh kas kelas di OpenCash.</p>
+        <p class="mt-1 text-[15px] text-muted">Ringkasan seluruh kas di OpenCash.</p>
     </div>
 
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -13,7 +13,7 @@
             <span class="flex h-9 w-9 items-center justify-center rounded-full bg-accent-tint text-accent-bright">
                 <i data-lucide="building-2" class="h-4 w-4" stroke-width="1.8"></i>
             </span>
-            <p class="mt-4 text-[13px] text-muted">Total Kelas</p>
+            <p class="mt-4 text-[13px] text-muted">Total Grup</p>
             <p class="mt-1 text-3xl font-semibold text-ink">{{ $totalGroups }}</p>
         </div>
 
@@ -37,7 +37,7 @@
     <div class="mt-8 grid gap-6 lg:grid-cols-2">
         <div class="rounded-2xl border border-line bg-surface p-6">
             <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-ink">Kelas terbaru</h2>
+                <h2 class="text-lg font-semibold text-ink">Grup terbaru</h2>
                 <a href="{{ route('admin.groups.index') }}" class="text-[14px] font-medium text-accent-bright transition-colors hover:text-accent">Lihat semua →</a>
             </div>
 
@@ -51,7 +51,7 @@
                         <span class="shrink-0 rounded-full bg-accent-tint px-2.5 py-1 text-xs font-medium text-accent-bright">{{ $group->users_count }} anggota</span>
                     </div>
                 @empty
-                    <p class="py-6 text-center text-[14px] text-muted">Belum ada kelas.</p>
+                    <p class="py-6 text-center text-[14px] text-muted">Belum ada grup.</p>
                 @endforelse
             </div>
         </div>
