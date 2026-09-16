@@ -137,6 +137,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [StudentDashboardController::class, 'index'])->name('dashboard');
         Route::get('bills', [PaymentController::class, 'index'])->name('bills.index');
         Route::post('cash-incomes/qris', [CashIncomeController::class, 'storeQris'])->name('cash-incomes.store-qris');
+        Route::get('history', function () {
+            return view('history.index');
+        })->name('history.index');
     });
 
     // ============ SHARED (dibaca oleh treasurer & student di kelas yang sama) ============
