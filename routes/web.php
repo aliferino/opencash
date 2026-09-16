@@ -114,6 +114,7 @@ Route::middleware('auth')->group(function () {
         Route::put('group-settings/{groupSetting}', [GroupSettingController::class, 'update'])->name('group-settings.update');
         Route::delete('group-settings/{groupSetting}', [GroupSettingController::class, 'destroy'])->name('group-settings.destroy');
         Route::post('group-settings/{groupSetting}/qris', [GroupSettingController::class, 'uploadQris'])->name('group-settings.qris');
+        Route::get('periods', [PeriodController::class, 'index'])->name('periods.index');   // ← tambahkan baris ini
 
         Route::post('cash-schedules', [CashScheduleController::class, 'store'])->name('cash-schedules.store');
         Route::put('cash-schedules/{cashSchedule}', [CashScheduleController::class, 'update'])->name('cash-schedules.update');

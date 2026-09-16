@@ -11,9 +11,13 @@ class GroupSettingController extends Controller
 {
     public function index(Request $request)
     {
-        return GroupSetting::where('group_id', $request->user()->group_id)
-            ->with('period')
-            ->get();
+        if ($request->wantsJson()) {
+            return GroupSetting::where('group_id', $request->user()->group_id)
+                ->with('period')
+                ->get();
+        }
+
+        return view('treasurer.settings.index');
     }
 
     public function store(Request $request)

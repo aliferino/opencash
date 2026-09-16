@@ -11,6 +11,10 @@ class CashScheduleController extends Controller
 {
     public function index(Request $request)
     {
+        if (! $request->wantsJson()) {
+            return view('treasurer.schedules.index');
+        }
+
         $user = $request->user();
 
         $schedules = CashSchedule::where('group_id', $user->group_id)
