@@ -5,6 +5,9 @@
 .env.production
 .phpactor.json
 .phpunit.result.cache
+/.agents
+/.claude
+/skills-lock.json
 /.codex
 /.cursor/
 /.idea

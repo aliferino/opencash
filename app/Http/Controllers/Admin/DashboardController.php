@@ -22,8 +22,7 @@ class DashboardController extends Controller
 
         $recentGroups = Group::withCount('users')->latest('id')->limit(5)->get();
 
-        $recentAudits = UserAudit::with(['user:id,name,group_id', 'updatedBy:id,name'])
-            ->latest('created_at')
+        $recentAudits = UserAudit::latest('created_at')
             ->limit(10)
             ->get();
 

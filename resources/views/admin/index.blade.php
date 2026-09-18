@@ -70,9 +70,9 @@
                         </span>
                         <div class="min-w-0">
                             <p class="text-[14px] text-ink">
-                                <span class="font-medium">{{ $audit->updatedBy?->name ?? 'Sistem' }}</span>
+                                <span class="font-medium">{{ $audit->actor_name ?? 'Sistem' }}</span>
                                 {{ str_replace('_', ' ', $audit->action) }}
-                                <span class="font-medium">{{ $audit->user?->name }}</span>
+                                <span class="font-medium">{{ $audit->subject_name ?? '—' }}</span>
                             </p>
                             <p class="text-xs text-muted">{{ $audit->created_at?->diffForHumans() }}</p>
                         </div>

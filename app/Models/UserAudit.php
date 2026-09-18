@@ -13,8 +13,13 @@ class UserAudit extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'user_id',
-        'updated_by',
+        'subject_type',
+        'subject_id',
+        'subject_name',
+        'actor_id',
+        'actor_name',
+        'group_id',
+        'group_name',
         'action',
         'old_values',
         'new_values',
@@ -29,13 +34,18 @@ class UserAudit extends Model
         ];
     }
 
-    public function user(): BelongsTo
+    public function subject(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'subject_id');
     }
 
-    public function updatedBy(): BelongsTo
+    public function actor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'updated_by');
+        return $this->belongsTo(User::class, 'actor_id');
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(Group::class);
     }
 }

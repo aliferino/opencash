@@ -10,26 +10,34 @@ class AuditController extends Controller
 {
     public function index(Request $request)
     {
-        $query = UserAudit::with(['user:id,name,email,group_id', 'updatedBy:id,name']);
+        $query = UserAudit::query();
 
-        if ($request->filled('user_id')) {
-            $query->where('user_id', $request->integer('user_id'));
+        if ($request->filled('subject_type') && in_array($request->string('subject_type')->toString(), ['user', 'group'], true)) {
+            $query->where('subject_type', $request->string('subject_type')->toString());
         }
 
-        if ($request->filled('group_id')) {
-            $query->whereHas('user', fn ($q) => $q->where('group_id', $request->integer('group_id')));
+        if ($request->filled('action')) {
+            $query->where('action', $request->string('action')->toString());
+        }
+
+        if ($request->filled('actor_id')) {
+            $query->where('actor_id', $request->integer('actor_id'));
         }
 
         if ($request->filled('search')) {
-            $search = $request->string('search');
-            $query->whereHas('user', fn ($q) => $q->where('name', 'like', '%' . $search . '%')
-                ->orWhere('email', 'like', '%' . $search . '%'));
+            $search = $request->string('search')->toString();
+
+            $query->where(function ($q) use ($search) {
+                $q->where('subject_name', 'like', '%'.$search.'%')
+                    ->orWhere('actor_name', 'like', '%'.$search.'%')
+                    ->orWhere('group_name', 'like', '%'.$search.'%');
+            });
         }
 
-        $query->latest('created_at');
+        $query->latest('id');
 
         if ($request->wantsJson()) {
-            return $query->paginate(20);
+            return $query->paginate($request->integer('per_page', 15));
         }
 
         return view('admin.audits.index');

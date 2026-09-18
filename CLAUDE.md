@@ -189,3 +189,101 @@ Notifikasi: submit QRIS → semua bendahara kelas dapat notifikasi
 - Jangan menulis data uji ke database dev secara destruktif (mis. mengubah
   nama grup asli saat uji). Bungkus dalam transaksi + rollback, atau
   simpan nilai lama dan pulihkan setelah selesai.
+
+## 8. Aturan Frontend & Desain (WAJIB dibaca sebelum menyentuh UI)
+
+Catatan: folder `.agents/` dan `.claude/` berisi skill pihak ketiga (taste
+skill, dll) yang di-`.gitignore` — itu alat bantu lokal, BUKAN bagian dari
+repo. Aturan di bawah adalah hasil rangkuman yang berlaku untuk project ini,
+jadi jangan bergantung pada isi folder itu.
+
+### 8.1 Stack & sumber kebenaran style
+
+- Stack UI: **Blade + Tailwind v4** (`resources/css/app.css` pakai `@theme`,
+  tanpa file config JS) + **CSS custom di `@push('head')`** untuk komponen
+  yang butuh state/animation kompleks (contoh: `auth/index.blade.php`).
+- Token warna/font ada di blok `@theme` di `resources/css/app.css`
+  (`--color-bg`, `--color-surface`, `--color-ink`, `--color-muted`,
+  `--color-accent`, `--color-accent-bright`, `--color-line`). Pakai utility
+  hasil token itu (`bg-surface`, `text-muted`, `border-line`) — JANGAN
+  hardcode hex baru di markup.
+- Tema: dark navy (off-black `#070b18`, bukan `#000`), satu accent biru,
+  surface `#101935`. Ini palette terkunci — jangan tambah accent warna lain.
+- Font: Instrument Sans (dimuat lewat `bunny()` di `vite.config.js`).
+  Jangan tambah font baru tanpa alasan kuat.
+- Icon: pakai **SVG inline stroke 1.5** (`stroke-width="1.5"`,
+  `stroke-linecap="round"`). Library `lucide` tersedia lewat
+  `window.lucideRefresh()`. Jangan pakai emoji sebagai ikon.
+
+### 8.2 Aturan yang dilarang (anti-slop)
+
+- Emoji di kode, markup, teks, atau alt text.
+- Gradien ungu/biru "AI aesthetic", glow neon, glassmorphism tanpa fungsi.
+- Tiga kartu fitur sejajar sebagai satu-satunya pola layout; hero center
+  simetris untuk halaman marketing.
+- `h-screen` untuk section full-height — selalu `min-h-[100dvh]` (bug
+  viewport iOS Safari).
+- Shadow hitam pekat (`shadow-lg` default). Kalau perlu elevasi, tint
+  shadow ke warna background (mis. `rgba(62, 123, 255, 0.42)` di halaman
+  auth).
+- Animasi yang mengubah `top`/`left`/`width`/`height`. Animasikan
+  **`transform` dan `opacity`** saja.
+- `backdrop-filter` di container yang ikut scroll (pemicu repaint berat di
+  mobile) — hanya untuk elemen fixed/sticky/overlay.
+- Menampilkan konten mock yang tidak nyambung dengan halaman (mis. kartu
+  "Saldo kas kelas Rp1.284.500" di halaman login). Kalau butuh pengisi
+  panel, pakai poin fitur yang benar-benar menggambarkan alur aplikasi.
+
+### 8.3 Motion & transisi
+
+- Durasi: 200–350ms untuk micro-interaction, 600–800ms untuk perpindahan
+  panel besar.
+- Easing: `cubic-bezier(0.22, 1, 0.36, 1)` untuk masuk (decelerate),
+  `cubic-bezier(0.76, 0, 0.24, 1)` untuk slide panel penuh.
+- Setiap elemen interaktif wajib punya state `hover`, `focus-visible`,
+  `active`, dan `disabled`/loading. Tombol submit form pakai spinner
+  (`data-loading="true"`), bukan diam saja.
+- Animasi masuk yang perlu replay tiap pergantian state: taruh di class
+  pemicu (contoh `.is-entering`) lalu restart lewat JS
+  (`classList.remove` → baca `offsetWidth` → `classList.add`), jangan
+  andalkan animasi sekali-jalan di page load.
+- Selalu hormati `@media (prefers-reduced-motion: reduce)`.
+
+### 8.4 Aksesibilitas (non-negotiable)
+
+- Form: setiap `input` punya `<label for>`, `autocomplete` yang tepat, dan
+  pesan error inline (`role="alert"`).
+- Elemen yang disembunyikan secara visual tapi masih ada di DOM harus
+  `pointer-events: none` + `aria-hidden="true"` + `inert` supaya tidak
+  bisa di-tab.
+- Ikon dekoratif: `aria-hidden="true"`. Tombol ikon: `aria-label`.
+- Kontras teks minimal 4.5:1. Teks muted di atas dark navy jangan lebih
+  gelap dari `#92a0c0`.
+
+### 8.5 Konvensi struktur view
+
+- View per-role: `resources/views/{admin,treasurer,student}/…` mengikuti
+  struktur controller. Halaman publik di `resources/views/web/`.
+- Halaman auth pakai `layouts.app` (tanpa navbar/sidebar); halaman publik
+  pakai `layouts.web`; halaman panel pakai `layouts.panel`.
+- CSS spesifik satu halaman ditulis di `@push('head')`, JS di
+  `@push('scripts')` — jangan taruh di `resources/css/app.css` atau
+  `resources/js/app.js` kecuali dipakai lintas halaman.
+- Kelas util Tailwind boleh dipakai campur dengan kelas komponen
+  (`auth-field`, `overlay-points`, dst). Untuk komponen dengan banyak state,
+  prefer kelas komponen + CSS di `@push('head')` supaya markup tetap
+  terbaca.
+- Setelah mengubah Blade/CSS, jalankan `php artisan view:clear` dan
+  verifikasi dengan `curl` (cek markup hasil render), bukan hanya dari
+  kode sumber.
+
+### 8.6 Checklist sebelum menyelesaikan pekerjaan UI
+
+- [ ] Tidak ada emoji, tidak ada warna/font baru di luar token `@theme`
+- [ ] Semua state interaktif (hover/focus/active/loading/disabled) ada
+- [ ] Hanya `transform`/`opacity` yang dianimasikan
+- [ ] Responsif: desktop, tablet (≤900px), mobile (≤767px) dicek
+- [ ] `prefers-reduced-motion` dihormati
+- [ ] Label, `aria-*`, dan urutan tab benar
+- [ ] Tidak ada konten mock yang tidak nyambung dengan halaman
+- [ ] `php artisan view:clear` dijalankan dan hasil render diverifikasi
