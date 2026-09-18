@@ -26,9 +26,9 @@
             Jadwal Tagihan
         </a>
 
-        <a href="{{ route('treasurer.students.index') }}" class="flex items-center gap-3 rounded-md px-3 py-2.5 text-[15px] transition-colors {{ request()->routeIs('treasurer.students.*') || request()->routeIs('treasurer.members.*') ? 'bg-accent-tint font-medium text-accent-bright' : 'text-muted hover:bg-white/5 hover:text-ink' }}">
+        <a href="{{ route('treasurer.group.index') }}" class="flex items-center gap-3 rounded-md px-3 py-2.5 text-[15px] transition-colors {{ request()->routeIs('treasurer.group.*') ? 'bg-accent-tint font-medium text-accent-bright' : 'text-muted hover:bg-white/5 hover:text-ink' }}">
             <i data-lucide="users" class="h-[18px] w-[18px] shrink-0" stroke-width="1.8"></i>
-            Siswa
+            Grup
         </a>
 
         <a href="{{ route('cash-incomes.index') }}" class="flex items-center gap-3 rounded-md px-3 py-2.5 text-[15px] transition-colors {{ request()->routeIs('cash-incomes.*') ? 'bg-accent-tint font-medium text-accent-bright' : 'text-muted hover:bg-white/5 hover:text-ink' }}">
@@ -41,7 +41,7 @@
             Pengeluaran
         </a>
 
-        <a href="{{ route('treasurer.reports.balance') }}" class="flex items-center gap-3 rounded-md px-3 py-2.5 text-[15px] transition-colors {{ request()->routeIs('treasurer.reports.*') ? 'bg-accent-tint font-medium text-accent-bright' : 'text-muted hover:bg-white/5 hover:text-ink' }}">
+        <a href="{{ route('treasurer.reports.index') }}" class="flex items-center gap-3 rounded-md px-3 py-2.5 text-[15px] transition-colors {{ request()->routeIs('treasurer.reports.*') ? 'bg-accent-tint font-medium text-accent-bright' : 'text-muted hover:bg-white/5 hover:text-ink' }}">
             <i data-lucide="bar-chart-3" class="h-[18px] w-[18px] shrink-0" stroke-width="1.8"></i>
             Laporan
         </a>

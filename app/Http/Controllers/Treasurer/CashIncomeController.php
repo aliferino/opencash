@@ -23,7 +23,49 @@ class CashIncomeController extends Controller
             $query->where('student_id', $user->id);
         }
 
-        return $query->latest('id')->paginate(20);
+        if ($request->filled('status') && in_array($request->string('status')->toString(), ['pending', 'verified', 'rejected'], true)) {
+            $query->where('status', $request->string('status')->toString());
+        }
+
+        if ($request->filled('payment_method') && in_array($request->string('payment_method')->toString(), ['cash', 'qris'], true)) {
+            $query->where('payment_method', $request->string('payment_method')->toString());
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->string('search')->toString();
+
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('student', fn ($student) => $student->where('name', 'like', '%'.$search.'%'))
+                    ->orWhereHas('cashSchedule', fn ($schedule) => $schedule->where('description', 'like', '%'.$search.'%'));
+            });
+        }
+
+        $query->latest('id');
+
+        if (! $request->wantsJson() && $user->isTreasurer()) {
+            $summaryQuery = CashIncome::whereHas('cashSchedule', fn ($q) => $q->where('group_id', $user->group_id));
+
+            if ($user->isStudent()) {
+                $summaryQuery->where('student_id', $user->id);
+            }
+
+            $summary = [
+                'pending' => (clone $summaryQuery)->where('status', 'pending')->count(),
+                'verified' => (clone $summaryQuery)->where('status', 'verified')->count(),
+                'rejected' => (clone $summaryQuery)->where('status', 'rejected')->count(),
+                'total_verified' => (int) (clone $summaryQuery)->where('status', 'verified')
+                    ->selectRaw('COALESCE(SUM(amount_paid + fine_paid), 0) as total')
+                    ->value('total'),
+            ];
+
+            return view('treasurer.incomes.index', compact('summary'));
+        }
+
+        return $query->paginate($request->integer('per_page', 15))->through(function (CashIncome $income) use ($user) {
+            $income->setAttribute('can_verify', $user->isTreasurer() && $income->status === 'pending');
+
+            return $income;
+        });
     }
 
     public function storeCash(Request $request)

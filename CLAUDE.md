@@ -25,20 +25,37 @@ nullable — user baru daftar belum punya role).
 
 ### Treasurer (Bendahara) — per kelas, "operator" kelas
 - Terikat satu `group_id`. Satu kelas bisa punya lebih dari satu bendahara.
-- Wewenang: kelola siswa di kelasnya (tambah manual / lihat daftar), ubah
-  role member kelas (student ↔ treasurer, serah-terima jabatan), atur
-  jadwal tagihan (`CashSchedule`), atur nominal kas & denda per periode
-  (`GroupSetting`), upload gambar QRIS, catat pembayaran tunai, verifikasi
-  pembayaran QRIS, catat pengeluaran, lihat laporan.
-- HANYA bisa refresh/copy kode undangan kelasnya sendiri — TIDAK bisa
-  membuat atau menghapus kelas (itu wewenang admin).
-- Tidak bisa mengubah role akun sendiri (cegah lockout).
+- Wewenang: kelola anggota kelasnya (tambah manual / ubah data / keluarkan
+  / ubah role student ↔ treasurer) lewat halaman **Grup**, ubah nama
+  kelasnya sendiri, refresh & salin kode undangan, atur jadwal tagihan
+  (`CashSchedule`), atur nominal kas & denda per periode (`GroupSetting`),
+  upload gambar QRIS, catat pembayaran tunai, verifikasi pembayaran QRIS,
+  catat pengeluaran, lihat laporan.
+- Halaman **Grup** (`Treasurer\GroupController`, view
+  `resources/views/treasurer/groups/`) sengaja menggabungkan "identitas
+  kelas" + "kelola anggota" dalam satu halaman — dulu dipisah sebagai
+  halaman Siswa, diganti nama jadi Grup karena konsepnya bendahara
+  mengelola KEANGGOTAAN kelas, bukan daftar siswa saja.
+- Tata letak halaman Grup: grid konten adalah bintang utamanya — 3 kartu
+  statistik (Total Anggota / Siswa / Bendahara) + tabel Anggota Grup.
+  Form "Informasi Grup" (nama + kode undangan) SENGAJA ditaruh di dalam
+  MODAL (`#group-detail-modal`), bukan sebagai kartu di halaman, supaya
+  grid & tabel tetap fokus dan tidak terbelah dua kolom. Pemicunya tombol
+  **"Detail Grup"** di header kanan atas halaman (sejajar tombol export di
+  halaman Laporan). Karena nama grup jadi tersembunyi di modal, nama
+  ditampilkan ulang di subjudul header (`#group-name-label`) supaya tetap
+  kelihatan, dan label itu ikut ter-update setiap kali nama disimpan.
+- HANYA bisa mengubah nama & refresh kode undangan kelasnya sendiri —
+  TIDAK bisa membuat atau menghapus kelas (itu wewenang admin). Karena itu
+  halaman Grup bendahara TIDAK punya tombol hapus/buat grup (beda dengan
+  `admin/groups/_detail` yang punya "Zona Berbahaya").
+- Tidak bisa mengubah role / mengeluarkan akun sendiri (cegah lockout).
 
 ### Student (Siswa)
 - Terikat satu `group_id`, `role` selalu `student`.
 - Masuk kelas dengan salah satu dari 2 cara:
   1. Memasukkan kode undangan di halaman onboarding (`/onboarding`).
-  2. Ditambahkan manual oleh bendahara (`Treasurer\StudentController::store`).
+  2. Ditambahkan manual oleh bendahara (`Treasurer\GroupController::storeMember`).
 - Wewenang: lihat tagihan kelasnya, bayar tunai (diinput bendahara) atau
   QRIS mandiri (upload bukti sendiri, lihat §3).
 
@@ -129,13 +146,24 @@ Notifikasi: submit QRIS → semua bendahara kelas dapat notifikasi
 
 ## 6. Yang Belum Selesai / Sengaja Di-stub
 
-- **View Blade**: struktur folder sudah di-scaffold per role
-  (`resources/views/admin`, `treasurer`, `student`, dst) tapi isinya masih
-  kosong. Ini fase berikutnya.
+- **View Blade**: view treasurer sudah lengkap (dashboard, pengaturan kas,
+  jadwal tagihan, **grup**, pemasukan, pengeluaran, **laporan**). Yang masih
+  kosong: view student (`student/bills`, `student/history`,
+  `student/expenses` — folder ini di-scaffold tapi belum dipakai, cek
+  `routes/web.php` untuk route student yang benar) dan
+  `treasurer/reports/pdf.blade.php` (untuk export PDF nanti).
 - **Export PDF/Excel** (`ReportController::exportPdf/exportExcel`): sengaja
   return HTTP 501, nunggu `barryvdh/laravel-dompdf` &
   `maatwebsite/excel` diinstall. UI harus visually disable tombol export
   sampai ini aktif.
+- **Laporan**: sengaja SATU halaman (`/treasurer/reports`) tanpa sub-tab —
+  4 kartu ringkasan + 3 panel grid (partisipasi pembayaran, siswa teratas,
+  aktivitas terbaru) + satu tabel "Rincian Arus Kas" yang menggabungkan
+  pemasukan & pengeluaran (difilter lewat dropdown, bukan tab). Endpoint
+  JSON pendukung: `reports/incomes` & `reports/expenses` (keduanya
+  paginated + search). Penting: rincian HANYA menampilkan pemasukan
+  `verified` supaya totalnya konsisten dengan kartu "Total Pemasukan" —
+  pemasukan `pending` sengaja tidak masuk saldo.
 - **Storage QRIS/proof image**: pakai `Storage::disk('public')`. Rencana
   pindah ke Cloudinary lewat `.env` kalau deploy ke platform dengan
   ephemeral filesystem (Render/Railway — BUKAN Vercel, Vercel tidak cocok
@@ -153,3 +181,11 @@ Notifikasi: submit QRIS → semua bendahara kelas dapat notifikasi
 - Jangan biarkan `Admin\GroupController` (atau controller admin lain)
   ke-scope ke satu `group_id` — admin itu global, scoping seperti itu
   salah arsitektur untuk role ini.
+- Halaman bendahara TIDAK boleh punya aksi buat/hapus grup. Bendahara cuma
+  mengelola grup yang sudah ada (nama, kode undangan, anggota).
+- Saat menguji lewat HTTP, login dulu baru akses halaman panel —
+  `layouts/partials/_sidebar.blade.php` memanggil `auth()->user()->isAdmin()`
+  dan error "Call to a member function isAdmin() on null" kalau belum login.
+- Jangan menulis data uji ke database dev secara destruktif (mis. mengubah
+  nama grup asli saat uji). Bungkus dalam transaksi + rollback, atau
+  simpan nilai lama dan pulihkan setelah selesai.

@@ -11,9 +11,31 @@ class CashExpenseController extends Controller
 {
     public function index(Request $request)
     {
-        return CashExpense::where('group_id', $request->user()->group_id)
-            ->latest('id')
-            ->paginate(20);
+        $groupId = $request->user()->group_id;
+
+        $query = CashExpense::with('treasurer')->where('group_id', $groupId);
+
+        if ($request->filled('search')) {
+            $search = $request->string('search')->toString();
+
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', '%'.$search.'%')
+                    ->orWhereHas('treasurer', fn ($treasurer) => $treasurer->where('name', 'like', '%'.$search.'%'));
+            });
+        }
+
+        $query->latest('expense_date')->latest('id');
+
+        if (! $request->wantsJson() && $request->user()->isTreasurer()) {
+            $summary = [
+                'count' => CashExpense::where('group_id', $groupId)->count(),
+                'total' => (int) CashExpense::where('group_id', $groupId)->sum('amount'),
+            ];
+
+            return view('treasurer.expenses.index', compact('summary'));
+        }
+
+        return $query->paginate($request->integer('per_page', 15));
     }
 
     public function store(Request $request)

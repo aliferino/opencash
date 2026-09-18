@@ -18,7 +18,6 @@ use App\Http\Controllers\Treasurer\DashboardController as TreasurerDashboardCont
 use App\Http\Controllers\Treasurer\GroupController as TreasurerGroupController;
 use App\Http\Controllers\Treasurer\GroupSettingController;
 use App\Http\Controllers\Treasurer\ReportController;
-use App\Http\Controllers\Treasurer\StudentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -99,15 +98,17 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:treasurer')->prefix('treasurer')->name('treasurer.')->group(function () {
         Route::get('/', [TreasurerDashboardController::class, 'index'])->name('dashboard');
 
+        // Grup: bendahara hanya mengelola grupnya sendiri — ubah nama, refresh kode
+        // undangan, dan kelola anggota. TIDAK bisa membuat atau menghapus grup.
         Route::get('group', [TreasurerGroupController::class, 'index'])->name('group.index');
+        Route::put('group', [TreasurerGroupController::class, 'update'])->name('group.update');
         Route::post('group/invite-code/refresh', [TreasurerGroupController::class, 'refreshInviteCode'])->name('group.invite-code.refresh');
 
-        Route::get('students', [StudentController::class, 'index'])->name('students.index');
-        Route::get('members', [StudentController::class, 'members'])->name('members.index');
-        Route::post('students', [StudentController::class, 'store'])->name('students.store');
-        Route::put('students/{student}', [StudentController::class, 'update'])->name('students.update');
-        Route::post('members/{member}/role', [StudentController::class, 'changeRole'])->name('members.change-role');
-        Route::delete('students/{student}', [StudentController::class, 'destroy'])->name('students.destroy');
+        Route::get('group/members', [TreasurerGroupController::class, 'members'])->name('group.members.index');
+        Route::post('group/members', [TreasurerGroupController::class, 'storeMember'])->name('group.members.store');
+        Route::put('group/members/{student}', [TreasurerGroupController::class, 'updateMember'])->name('group.members.update');
+        Route::post('group/members/{member}/role', [TreasurerGroupController::class, 'changeRole'])->name('group.members.change-role');
+        Route::delete('group/members/{student}', [TreasurerGroupController::class, 'destroyMember'])->name('group.members.destroy');
 
         Route::get('group-settings', [GroupSettingController::class, 'index'])->name('group-settings.index');
         Route::post('group-settings', [GroupSettingController::class, 'store'])->name('group-settings.store');
@@ -126,7 +127,12 @@ Route::middleware('auth')->group(function () {
         Route::post('cash-expenses', [CashExpenseController::class, 'store'])->name('cash-expenses.store');
         Route::delete('cash-expenses/{cashExpense}', [CashExpenseController::class, 'destroy'])->name('cash-expenses.destroy');
 
+        // Laporan: satu halaman (ringkasan + rincian pemasukan/pengeluaran),
+        // endpoint JSON dipakai untuk memuat rincian secara async.
+        Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/balance', [ReportController::class, 'balance'])->name('reports.balance');
+        Route::get('reports/incomes', [ReportController::class, 'incomes'])->name('reports.incomes');
+        Route::get('reports/expenses', [ReportController::class, 'expenses'])->name('reports.expenses');
         Route::get('reports/group', [ReportController::class, 'groupReport'])->name('reports.group');
         Route::get('reports/students/{student}', [ReportController::class, 'studentReport'])->name('reports.student');
         Route::get('reports/export/pdf', [ReportController::class, 'exportPdf'])->name('reports.export.pdf');
