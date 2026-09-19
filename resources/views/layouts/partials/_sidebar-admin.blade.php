@@ -26,11 +26,6 @@
             Pengguna
         </a>
 
-        <a href="{{ route('admin.periods.index') }}" class="flex items-center gap-3 rounded-md px-3 py-2.5 text-[15px] transition-colors {{ request()->routeIs('admin.periods.*') ? 'bg-accent-tint font-medium text-accent-bright' : 'text-muted hover:bg-white/5 hover:text-ink' }}">
-            <i data-lucide="calendar" class="h-[18px] w-[18px] shrink-0" stroke-width="1.8"></i>
-            Periode
-        </a>
-
         <a href="{{ route('admin.audits.index') }}" class="flex items-center gap-3 rounded-md px-3 py-2.5 text-[15px] transition-colors {{ request()->routeIs('admin.audits.*') ? 'bg-accent-tint font-medium text-accent-bright' : 'text-muted hover:bg-white/5 hover:text-ink' }}">
             <i data-lucide="history" class="h-[18px] w-[18px] shrink-0" stroke-width="1.8"></i>
             Log Aktivitas

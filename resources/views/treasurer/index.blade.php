@@ -9,24 +9,24 @@
     </div>
 
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        <div class="rounded-2xl border border-line bg-surface p-6">
-            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-accent-tint text-accent-bright">
+        <div class="rounded-2xl border border-accent/40 bg-accent-tint p-6">
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-white">
                 <i data-lucide="wallet" class="h-4 w-4" stroke-width="1.8"></i>
             </span>
             <p class="mt-4 text-[13px] text-muted">Saldo Kas</p>
-            <p class="mt-1 text-3xl font-semibold text-ink">Rp{{ number_format($balance, 0, ',', '.') }}</p>
+            <p class="mt-1 text-3xl font-semibold text-ink">{{ \App\Support\CashLedger::rupiah($balance) }}</p>
         </div>
 
         <div class="rounded-2xl border border-line bg-surface p-6">
-            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-accent-tint text-accent-bright">
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500/10 text-amber-400">
                 <i data-lucide="badge-alert" class="h-4 w-4" stroke-width="1.8"></i>
             </span>
             <p class="mt-4 text-[13px] text-muted">Menunggu Verifikasi</p>
-            <p class="mt-1 text-3xl font-semibold text-ink">{{ $pendingCount }}</p>
+            <p class="mt-1 text-3xl font-semibold text-amber-400">{{ $pendingCount }}</p>
         </div>
 
         <div class="rounded-2xl border border-line bg-surface p-6">
-            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-accent-tint text-accent-bright">
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
                 <i data-lucide="calendar-clock" class="h-4 w-4" stroke-width="1.8"></i>
             </span>
             <p class="mt-4 text-[13px] text-muted">Tagihan Mendatang</p>

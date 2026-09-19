@@ -14,6 +14,19 @@ npm run dev            # atau: npm run build
 php artisan serve      # dev server di http://localhost:8000
 ```
 
+### Menjalankan test
+
+Test butuh database MySQL terpisah (ekstensi `pdo_sqlite` tidak aktif di
+Laragon, jadi `phpunit.xml` memakai MySQL):
+
+```sh
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS opencash_testing CHARACTER SET utf8mb4;"
+php artisan test
+```
+
+Test cicilan ada di `tests/Feature/InstallmentTest.php` — jalankan ini kalau
+menyentuh logika pembayaran/sisa/saldo.
+
 - Jangan commit `.env`, `node_modules`, `vendor`, `public/build`.
 - Folder `.agents/` dan `.claude/` **di-`.gitignore`** — itu skill pihak
   ketiga (taste skill dll) untuk pemakaian lokal. Aturan yang berlaku ada di
@@ -26,16 +39,60 @@ php artisan serve      # dev server di http://localhost:8000
 
 - Kode sengaja **minim komentar**; logika bisnis didokumentasikan di
   `CLAUDE.md`. Cukup nama method/variable yang jelas.
+- **Nama route & folder = bahasa Inggris; teks yang dilihat user = bahasa
+  Indonesia.** Contoh: route `student.cash.index`, folder `student/cash/`,
+  judul halaman "Kas Kelas".
+- **Halaman utama sebuah folder view = `index.blade.php`**, walau method
+  controllernya `edit()`/`show()` (mis. `profile/index.blade.php`).
+  Partial pakai prefix `_` (`_table`, `_modal`, `_import`).
 - Struktur controller per-role: `Admin/`, `Treasurer/`, `Student/`. Setiap
   controller WAJIB `use App\Http\Controllers\Controller;` di namespace
   bertingkat.
 - Controller resource WAJIB scope query ke `group_id` user login, KECUALI
   controller `Admin\` (admin global, `group_id` selalu null).
+- **Jangan bagi satu route antara bendahara & siswa kalau halaman itu punya
+  aksi tulis.** Siswa read-only: kalau butuh data yang sama, buat
+  controller/endpoint terpisah di namespace `Student\`, jangan longgarkan
+  middleware role.
 - Endpoint CRUD = JSON API (dipanggil async dari view). Dashboard & halaman
   siswa di-render Blade langsung untuk first paint cepat.
 - Jangan tulis data uji destruktif ke database dev — bungkus transaksi +
   rollback, atau simpan & pulihkan nilai lama.
 - `user_audits` read-only (diisi `UserObserver`), jangan create/update manual.
+
+## 2b. Aturan Kas & Cicilan (penting)
+
+- **Tagihan boleh dicicil** — satu siswa bisa punya banyak `cash_incomes`
+  untuk `cash_schedule_id` yang sama. Jangan asumsikan "satu tagihan = satu
+  baris pembayaran". Jangan hidupkan lagi `abortIfAlreadyPaid()`.
+- **Semua hitungan terbayar/sisa/saldo WAJIB lewat `App\Support\CashLedger`**
+  (`billSummary`, `billSummaries`, `scheduleProgress`, `remainingFor`,
+  `balance`, `rupiah`). Jangan hitung manual di controller/view — angka
+  siswa & bendahara harus selalu sama.
+- Batas pembayaran = sisa tagihan, dihitung dari `verified + pending`
+  (pending ikut supaya tidak bayar dobel saat bukti QRIS belum diverifikasi).
+  Melampaui sisa → HTTP 422.
+- Saldo kas boleh minus; tampilkan dengan `CashLedger::rupiah()`, bukan
+  `number_format()` polos.
+- Nominal kas per tagihan = `cash_schedules.amount`. TIDAK ADA pengaturan
+  nominal per periode (`periods` & `group_settings` sudah dihapus).
+- Detail lengkap: `CLAUDE.md` §3.
+
+## 2c. Import Excel (bulk add)
+
+- **Validasi dulu SEMUA baris, baru simpan.** Kalau ada satu baris salah,
+  tidak ada yang disimpan, dan error dilaporkan per baris
+  ("Baris 4: ..."). Ini supaya bendahara tidak menebak data mana yang masuk.
+- Cek bentrok ANTAR baris di berkas (mis. dua baris menabrak tagihan yang
+  sama sampai totalnya melebihi nominal) — jangan cuma cek lawan data di DB.
+- Import pemasukan = tunai + langsung `verified` (bendahara sudah pegang
+  uangnya), sama seperti "Catat Tunai" manual.
+- Import pengeluaran tidak punya foto nota (`proof_image` null) — nota tetap
+  wajib kalau dicatat manual.
+- Kelas import (`App\Imports\*`) hanya MEMBACA & merapikan baris; validasi
+  dan penyimpanan ada di controller import.
+- Template contoh ada di `docs/import-templates/` dan tombol "Unduh
+  template" di modal import.
 
 ## 3. Aturan Frontend & Desain
 
@@ -102,3 +159,7 @@ Ringkasan dari `CLAUDE.md` §8 — detail lengkap ada di sana.
 - [ ] Label, `aria-*`, urutan tab benar
 - [ ] Tidak ada konten mock yang tidak nyambung
 - [ ] `php artisan view:clear` dijalankan + hasil render diverifikasi
+- [ ] Kalau menyentuh kas: `php artisan test` lulus (khususnya
+      `InstallmentTest`)
+- [ ] Kalau menyentuh akses role: sudah dicoba sebagai siswa DAN bendahara
+      (siswa tidak boleh bisa membuka halaman ber-aksi-tulis)

@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers\Treasurer;
 
+use App\Exports\TreasurerReportExport;
 use App\Http\Controllers\Controller;
 use App\Models\CashExpense;
 use App\Models\CashIncome;
 use App\Models\CashSchedule;
 use App\Models\User;
+use App\Support\CashLedger;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
@@ -16,12 +20,9 @@ class ReportController extends Controller
     {
         $groupId = $request->user()->group_id;
 
-        $totalIncome = (int) CashIncome::where('status', 'verified')
-            ->whereHas('cashSchedule', fn ($q) => $q->where('group_id', $groupId))
-            ->selectRaw('COALESCE(SUM(amount_paid + fine_paid), 0) as total')
-            ->value('total');
-
-        $totalExpense = (int) CashExpense::where('group_id', $groupId)->sum('amount');
+        $balance = CashLedger::balance($groupId);
+        $totalIncome = $balance['income'];
+        $totalExpense = $balance['expense'];
 
         $pending = CashIncome::where('status', 'pending')
             ->whereHas('cashSchedule', fn ($q) => $q->where('group_id', $groupId))
@@ -70,7 +71,8 @@ class ReportController extends Controller
                 'title' => $income->student?->name ?? '—',
                 'subtitle' => $income->cashSchedule?->description ?? '—',
                 'amount' => $income->amount_paid + $income->fine_paid,
-            ]);
+            ])
+            ->values();
 
         $recentExpenses = CashExpense::where('group_id', $groupId)
             ->with('treasurer:id,name')
@@ -186,13 +188,42 @@ class ReportController extends Controller
         ]);
     }
 
+    /**
+     * Export laporan. `scope` menentukan isi: `income`, `expense`, atau `all`.
+     */
     public function exportPdf(Request $request)
     {
-        abort(501, 'Export PDF belum aktif — install barryvdh/laravel-dompdf terlebih dahulu.');
+        $user = $request->user();
+        $scope = $this->scope($request);
+        $export = new TreasurerReportExport($user->group_id, $scope, $user->group?->name);
+
+        $pdf = Pdf::loadView('treasurer.reports.pdf', [
+            'group' => $user->group,
+            'scope' => $scope,
+            'scopeLabel' => $export->scopeLabel(),
+            'incomes' => in_array($scope, ['income', 'all'], true) ? $export->incomes() : collect(),
+            'expenses' => in_array($scope, ['expense', 'all'], true) ? $export->expenses() : collect(),
+            'printedAt' => now(),
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download('laporan-kas-'.$scope.'-'.now()->format('Ymd').'.pdf');
     }
 
     public function exportExcel(Request $request)
     {
-        abort(501, 'Export Excel belum aktif — install maatwebsite/excel terlebih dahulu.');
+        $user = $request->user();
+        $scope = $this->scope($request);
+
+        return Excel::download(
+            new TreasurerReportExport($user->group_id, $scope, $user->group?->name),
+            'laporan-kas-'.$scope.'-'.now()->format('Ymd').'.xlsx'
+        );
+    }
+
+    private function scope(Request $request): string
+    {
+        $scope = $request->string('scope')->toString();
+
+        return in_array($scope, ['income', 'expense', 'all'], true) ? $scope : 'all';
     }
 }

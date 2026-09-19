@@ -27,37 +27,61 @@ nullable — user baru daftar belum punya role).
 - Terikat satu `group_id`. Satu kelas bisa punya lebih dari satu bendahara.
 - Wewenang: kelola anggota kelasnya (tambah manual / ubah data / keluarkan
   / ubah role student ↔ treasurer) lewat halaman **Grup**, ubah nama
-  kelasnya sendiri, refresh & salin kode undangan, atur jadwal tagihan
-  (`CashSchedule`), atur nominal kas & denda per periode (`GroupSetting`),
-  upload gambar QRIS, catat pembayaran tunai, verifikasi pembayaran QRIS,
-  catat pengeluaran, lihat laporan.
+  kelasnya sendiri, refresh & salin kode undangan, unggah gambar QRIS kelas,
+  buat/ubah/hapus **Jadwal Tagihan** (`CashSchedule`) beserta nominalnya,
+  catat pembayaran tunai (termasuk import Excel massal), verifikasi
+  pembayaran QRIS, catat pengeluaran (termasuk import Excel massal), lihat
+  & export laporan.
+- **Nominal kas & denda per tagihan ada di `cash_schedules.amount`**, diatur
+  di halaman Jadwal Tagihan. TIDAK ADA lagi pengaturan nominal per periode
+  (lihat §6 soal penghapusan `periods`).
 - Halaman **Grup** (`Treasurer\GroupController`, view
   `resources/views/treasurer/groups/`) sengaja menggabungkan "identitas
-  kelas" + "kelola anggota" dalam satu halaman — dulu dipisah sebagai
-  halaman Siswa, diganti nama jadi Grup karena konsepnya bendahara
+  kelas" + "kelola anggota" + "QRIS kelas" dalam satu halaman — dulu dipisah
+  sebagai halaman Siswa, diganti nama jadi Grup karena konsepnya bendahara
   mengelola KEANGGOTAAN kelas, bukan daftar siswa saja.
 - Tata letak halaman Grup: grid konten adalah bintang utamanya — 3 kartu
-  statistik (Total Anggota / Siswa / Bendahara) + tabel Anggota Grup.
-  Form "Informasi Grup" (nama + kode undangan) SENGAJA ditaruh di dalam
-  MODAL (`#group-detail-modal`), bukan sebagai kartu di halaman, supaya
-  grid & tabel tetap fokus dan tidak terbelah dua kolom. Pemicunya tombol
-  **"Detail Grup"** di header kanan atas halaman (sejajar tombol export di
-  halaman Laporan). Karena nama grup jadi tersembunyi di modal, nama
-  ditampilkan ulang di subjudul header (`#group-name-label`) supaya tetap
-  kelihatan, dan label itu ikut ter-update setiap kali nama disimpan.
+  statistik berwarna (Total Anggota / Siswa / Bendahara) + panel QRIS +
+  tabel Anggota Grup. Form "Informasi Grup" (nama + kode undangan) SENGAJA
+  ditaruh di dalam MODAL (`#group-detail-modal`), bukan sebagai kartu di
+  halaman, supaya grid & tabel tetap fokus dan tidak terbelah dua kolom.
+  Pemicunya tombol **"Detail Grup"** di header kanan atas halaman. Karena
+  nama grup jadi tersembunyi di modal, nama ditampilkan ulang di subjudul
+  header (`#group-name-label`) supaya tetap kelihatan, dan label itu ikut
+  ter-update setiap kali nama disimpan.
 - HANYA bisa mengubah nama & refresh kode undangan kelasnya sendiri —
   TIDAK bisa membuat atau menghapus kelas (itu wewenang admin). Karena itu
   halaman Grup bendahara TIDAK punya tombol hapus/buat grup (beda dengan
   `admin/groups/_detail` yang punya "Zona Berbahaya").
 - Tidak bisa mengubah role / mengeluarkan akun sendiri (cegah lockout).
 
-### Student (Siswa)
+### Student (Siswa) — READ-ONLY
 - Terikat satu `group_id`, `role` selalu `student`.
 - Masuk kelas dengan salah satu dari 2 cara:
   1. Memasukkan kode undangan di halaman onboarding (`/onboarding`).
   2. Ditambahkan manual oleh bendahara (`Treasurer\GroupController::storeMember`).
-- Wewenang: lihat tagihan kelasnya, bayar tunai (diinput bendahara) atau
-  QRIS mandiri (upload bukti sendiri, lihat §3).
+- Wewenang: **hanya membaca** + satu aksi tulis yaitu upload bukti QRIS
+  (`storeQris`) untuk tagihannya sendiri. TIDAK ada CRUD tagihan di sisi
+  siswa — itu wewenang bendahara.
+- Halaman siswa (semua read-only kecuali upload bukti QRIS):
+  | Halaman | Route | View |
+  |---|---|---|
+  | Dashboard | `student.dashboard` | `student/index` |
+  | Tagihan Saya | `student.bills.index` | `student/bills/index` |
+  | Kas Kelas | `student.cash.index` | `student/cash/index` |
+  | Riwayat | `student.history.index` | `student/history/index` |
+  | Export Riwayat | `student.history.export.pdf` / `.excel` | `student/history/pdf` + `App\Exports\StudentHistoryExport` |
+- **Tagihan Saya** menampilkan nominal, sudah dibayar, dan SISA per tagihan
+  (karena cicilan), plus tombol Bayar untuk upload bukti QRIS sisa.
+- **Riwayat** menjawab "bayar kapan & untuk tagihan apa", termasuk pembayaran
+  yang masih `pending` dan yang `rejected`, plus sisa per tagihan. Bisa
+  diexport PDF/Excel.
+- **Kas Kelas** = transparansi: saldo kas sekarang, total pemasukan, seluruh
+  pengeluaran kelas + nota, dan ringkasan "ke mana uangnya pergi" per
+  keterangan. Semua read-only.
+- Dulu siswa bisa membuka `/cash-schedules` (halaman CRUD bendahara) karena
+  route-nya dibagi `role:treasurer,student`. Sekarang sudah dikunci ke
+  bendahara — lihat §7.
 
 ## 2. Alur Onboarding
 
@@ -76,7 +100,7 @@ nullable — user baru daftar belum punya role).
   kode undangan otomatis → admin lanjut `addTreasurer()` untuk menambahkan
   1-2 akun bendahara ke kelas itu.
 
-## 3. Alur Pembayaran Kas
+## 3. Alur Pembayaran Kas (CICILAN)
 
 Dua jalur pembayaran untuk satu `CashSchedule` (tagihan):
 
@@ -90,10 +114,53 @@ lewat `CashIncomeController::storeQris`. Status masuk sebagai `pending`
 sampai bendahara mengecek mutasi rekening secara manual dan memverifikasi
 (`CashIncomeController::verify`, ubah ke `verified`/`rejected`).
 
-**Aturan penting**: satu siswa TIDAK BOLEH punya lebih dari satu
-`CashIncome` berstatus `verified`/`pending` untuk `cash_schedule_id` yang
-sama (dicegah lewat `abortIfAlreadyPaid()` di kedua method `storeCash` &
-`storeQris`) — mencegah tagihan yang sama dibayar dobel.
+### 3.1 Cicilan (pembayaran sebagian) — INTI LOGIKA
+
+**Satu tagihan BOLEH dibayar berkali-kali (dicicil)** lewat jalur tunai
+maupun QRIS. Contoh: tagihan Rp5.000, siswa bayar Rp3.000 → sisa Rp2.000
+tetap muncul sebagai tagihan yang belum lunas di halaman siswa DAN di
+rekap bendahara.
+
+Aturannya:
+
+- **Tidak ada lagi larangan "sekali bayar".** Method `abortIfAlreadyPaid()`
+  sudah DIHAPUS — jangan dikembalikan. Yang berlaku sekarang
+  `assertWithinRemaining()` di `CashIncomeController`.
+- **Batasnya nominal tagihan, bukan jumlah baris.** `assertWithinRemaining()`
+  menghitung `SUM(amount_paid + fine_paid)` dari pembayaran berstatus
+  `verified` + `pending`, lalu menolak (HTTP 422) kalau nominal baru bikin
+  total melebihi `cash_schedules.amount`.
+- **`pending` IKUT dihitung sebagai "sudah terpakai".** Ini sengaja: kalau
+  bukti QRIS siswa belum diverifikasi, siswa tidak boleh menembak pembayaran
+  kedua sebesar sisa penuh (mencegah bayar dobel). Karena itu validasi pakai
+  `verified + pending`, bukan `verified` saja.
+- **Bendahara boleh mengoreksi nominal saat verifikasi** (`verify` menerima
+  `amount_paid` opsional) — mis. bukti transfer ternyata Rp4.000 padahal
+  siswa mengisi Rp3.000. Validasi tetap jalan dengan `exceptIncomeId` supaya
+  baris yang sedang diverifikasi tidak dihitung dua kali.
+- **Denda (`fine_paid`) ikut menambah sisa yang dihitung.** Denda dianggap
+  bagian dari nilai yang "terpakai" untuk tagihan itu.
+
+### 3.2 Satu sumber perhitungan: `App\Support\CashLedger`
+
+JANGAN menghitung terbayar/sisa/saldo di controller atau view secara manual.
+Semua lewat `CashLedger` supaya angka di halaman siswa, bendahara, dan
+laporan tidak pernah berbeda:
+
+| Method | Kegunaan |
+|---|---|
+| `billSummary($schedule, $incomes)` | ringkasan satu tagihan satu siswa: `paid`, `pending`, `due`, `remaining`, `status`, `is_paid`, `is_partial` |
+| `billSummaries($schedules, $incomes)` | ringkasan semua tagihan satu siswa (halaman Tagihan Saya, Riwayat, dashboard siswa) |
+| `scheduleProgress($schedule, $students, $incomes)` | progres SELURUH kelas untuk satu tagihan: `target`, `paid`, `remaining`, `paid_students`, `partial_students`, `unpaid_students`, `students[]` |
+| `balance($groupId)` | `income`, `expense`, `balance` — saldo kas kelas |
+| `rupiah($amount)` | format rupiah aman untuk angka negatif (`−Rp9.000`) |
+
+Nilai `status` yang mungkin: `paid` (lunas), `partial` (kurang bayar),
+`pending` (menunggu verifikasi, belum ada yang verified), `unpaid`.
+
+**Saldo kas bisa MINUS** kalau pengeluaran melebihi pemasukan yang sudah
+`verified`. Itu kondisi sah, bukan bug — tampilkan apa adanya, dan pakai
+`CashLedger::rupiah()` supaya tandanya terbaca (bukan "Rp-9.000").
 
 Notifikasi: submit QRIS → semua bendahara kelas dapat notifikasi
 (`CashIncomeSubmitted`). Verifikasi berhasil → siswa dapat notifikasi
@@ -101,20 +168,24 @@ Notifikasi: submit QRIS → semua bendahara kelas dapat notifikasi
 
 ## 4. Struktur Data Kunci
 
-- `groups` — satu baris = satu kelas. Kolom: `name`, `invite_code`. TIDAK
-  ADA `qris_image` di sini (lihat catatan migrasi di bawah).
-- `periods` — referensi global (bukan per-kelas), mis. "Mingguan",
-  "Bulanan". Dikelola admin (`Admin\PeriodController`), dipakai semua kelas.
-- `group_settings` — pengaturan kas PER KELAS PER PERIODE: `cash_amount`,
-  `fine_amount`, DAN `qris_image`. Satu form pengaturan bendahara nulis ke
-  satu tabel ini — makanya `qris_image` sengaja di sini, bukan di `groups`
-  (migrasi `move_qris_image_column_to_group_settings_table` sudah
-  menjalankan perpindahan ini).
+- `groups` — satu baris = satu kelas. Kolom: `name`, `invite_code`,
+  `qris_image` (gambar QRIS kelas; dulu nempel di `group_settings`, dipindah
+  ke sini lewat migrasi `move_qris_to_groups_and_drop_periods`).
+- `periods` — **SUDAH DIHAPUS.** Dulu referensi global "Mingguan/Bulanan".
+  Alasan: nominal kas sekarang per TAGIHAN (`cash_schedules.amount`), jadi
+  periode tidak lagi punya fungsi.
+- `group_settings` — **SUDAH DIHAPUS.** Dulu menyimpan `cash_amount`,
+  `fine_amount`, dan `qris_image` per periode per kelas. `qris_image`
+  dipindah ke `groups`, sisanya tidak dipakai.
 - `cash_schedules` — daftar tagihan per kelas (`due_date`, `description`,
-  `amount`).
+  `amount`). **`amount` inilah nominal kas per siswa untuk tagihan itu** —
+  satu-satunya tempat nominal diatur.
 - `cash_incomes` — riwayat pembayaran siswa. `payment_method`: `cash`|
-  `qris`. `status`: `pending`|`verified`|`rejected`.
-- `cash_expenses` — pengeluaran kas, wajib ada `proof_image` (foto nota).
+  `qris`. `status`: `pending`|`verified`|`rejected`. **Satu siswa bisa punya
+  BANYAK baris untuk satu `cash_schedule_id`** (cicilan) — jangan pakai
+  asumsi "satu tagihan = satu baris" saat query.
+- `cash_expenses` — pengeluaran kas. `proof_image` nullable: wajib lewat
+  form manual (validasi `required`), boleh kosong untuk hasil import massal.
 - `user_audits` — log otomatis tiap `users` diupdate (role/nama/email
   berubah), dibuat oleh `UserObserver` — read-only, jangan pernah bikin
   create/update/destroy manual untuk tabel ini.
@@ -122,11 +193,14 @@ Notifikasi: submit QRIS → semua bendahara kelas dapat notifikasi
 ## 5. Konvensi Controller & Routing
 
 - Struktur folder controller per-role: `Admin/`, `Treasurer/`, `Student/`.
-  Controller yang levelnya "shared" (dipakai admin+treasurer+student atau
-  cuma treasurer+student) taruh di namespace milik yang paling banyak
-  action-nya, lalu expose route index-nya lewat middleware role gabungan
-  di `routes/web.php` (lihat grup `role:treasurer,student` di paling
-  bawah file itu).
+  Nama route & folder **selalu bahasa Inggris**; teks yang dilihat user
+  **selalu bahasa Indonesia**. Contoh: route `student.cash.index` dengan
+  judul halaman "Kas Kelas", folder `student/cash/`.
+- **Jangan bagi satu route antara bendahara & siswa kalau halamannya punya
+  aksi tulis.** Route `cash-schedules` / `cash-incomes` / `cash-expenses`
+  dikunci `role:treasurer`; siswa punya route sendiri di prefix `student/`.
+  Kalau butuh data yang sama untuk siswa, buat endpoint/controller terpisah
+  di namespace `Student\` — jangan longgarkan middleware-nya.
 - Semua controller resource WAJIB scope query ke `group_id` milik user
   yang login (`$request->user()->group_id`), KECUALI controller di bawah
   namespace `Admin\` yang memang global (admin tidak punya `group_id`).
@@ -146,30 +220,39 @@ Notifikasi: submit QRIS → semua bendahara kelas dapat notifikasi
 
 ## 6. Yang Belum Selesai / Sengaja Di-stub
 
-- **View Blade**: view treasurer sudah lengkap (dashboard, pengaturan kas,
-  jadwal tagihan, **grup**, pemasukan, pengeluaran, **laporan**). Yang masih
-  kosong: view student (`student/bills`, `student/history`,
-  `student/expenses` — folder ini di-scaffold tapi belum dipakai, cek
-  `routes/web.php` untuk route student yang benar) dan
-  `treasurer/reports/pdf.blade.php` (untuk export PDF nanti).
-- **Export PDF/Excel** (`ReportController::exportPdf/exportExcel`): sengaja
-  return HTTP 501, nunggu `barryvdh/laravel-dompdf` &
-  `maatwebsite/excel` diinstall. UI harus visually disable tombol export
-  sampai ini aktif.
+- **View Blade**: view treasurer & student lengkap. Folder
+  `student/expenses` masih kosong & belum dipakai, biarkan saja
+  (pengeluaran untuk siswa ada di halaman Kas Kelas).
+- **Export** sudah AKTIF semua (`dompdf` + `maatwebsite/excel` terpasang):
+  - Riwayat siswa: `Student\HistoryController::exportPdf/exportExcel`
+  - Laporan bendahara: `Treasurer\ReportController::exportPdf/exportExcel`
+    dengan parameter `?scope=all|income|expense`.
+- **Import Excel** (bulk add) sudah AKTIF:
+  - Pemasukan: `Treasurer\CashIncomeImportController`
+  - Pengeluaran: `Treasurer\CashExpenseImportController`
+  - Kelas import: `App\Imports\IncomesImport` & `ExpensesImport` (hanya
+    membaca; validasi + simpan di controller).
+  - Template contoh ada di `docs/import-templates/`.
 - **Laporan**: sengaja SATU halaman (`/treasurer/reports`) tanpa sub-tab —
-  4 kartu ringkasan + 3 panel grid (partisipasi pembayaran, siswa teratas,
-  aktivitas terbaru) + satu tabel "Rincian Arus Kas" yang menggabungkan
-  pemasukan & pengeluaran (difilter lewat dropdown, bukan tab). Endpoint
-  JSON pendukung: `reports/incomes` & `reports/expenses` (keduanya
-  paginated + search). Penting: rincian HANYA menampilkan pemasukan
-  `verified` supaya totalnya konsisten dengan kartu "Total Pemasukan" —
-  pemasukan `pending` sengaja tidak masuk saldo.
+  4 kartu ringkasan berwarna + 3 panel grid (partisipasi pembayaran, siswa
+  teratas, aktivitas terbaru) + satu tabel "Rincian Arus Kas" yang
+  menggabungkan pemasukan & pengeluaran (difilter lewat dropdown, bukan
+  tab). Endpoint JSON pendukung: `reports/incomes` & `reports/expenses`
+  (keduanya paginated + search). Penting: rincian HANYA menampilkan
+  pemasukan `verified` supaya totalnya konsisten dengan kartu "Total
+  Pemasukan" — pemasukan `pending` sengaja tidak masuk saldo.
 - **Storage QRIS/proof image**: pakai `Storage::disk('public')`. Rencana
   pindah ke Cloudinary lewat `.env` kalau deploy ke platform dengan
   ephemeral filesystem (Render/Railway — BUKAN Vercel, Vercel tidak cocok
   untuk Laravel karena tidak ada queue worker persisten & local storage).
 - **Notifikasi**: polling based (fetch berkala ke `NotificationController`),
   belum ada WebSocket/real-time push.
+- **Testing**: `php artisan test` butuh database MySQL `opencash_testing`
+  (ekstensi `pdo_sqlite` tidak aktif di Laragon). Buat dulu:
+  `CREATE DATABASE opencash_testing CHARACTER SET utf8mb4;`
+  Lihat `phpunit.xml`. Test ada di `tests/Feature/InstallmentTest.php`
+  (cicilan & sisa) dan `tests/Feature/TreasurerToolsTest.php`
+  (import/export/profil/QRIS).
 
 ## 7. Kesalahan yang Sudah Pernah Terjadi (jangan diulang)
 
@@ -189,6 +272,30 @@ Notifikasi: submit QRIS → semua bendahara kelas dapat notifikasi
 - Jangan menulis data uji ke database dev secara destruktif (mis. mengubah
   nama grup asli saat uji). Bungkus dalam transaksi + rollback, atau
   simpan nilai lama dan pulihkan setelah selesai.
+- **Jangan kembalikan `abortIfAlreadyPaid()`** atau aturan "satu tagihan
+  hanya boleh satu pembayaran". Cicilan itu fitur yang diminta user —
+  pakai `assertWithinRemaining()`.
+- **Jangan hitung terbayar/sisa/saldo manual** di controller/view. Selalu
+  lewat `CashLedger` (§3.2), kalau tidak angka di sisi siswa dan bendahara
+  akan beda.
+- **Jangan taruh halaman ber-aksi-tulis di belakang middleware role
+  gabungan** (`role:treasurer,student`). Itu penyebab siswa bisa membuka
+  halaman CRUD tagihan.
+- Jangan pakai `Rp{{ number_format($x) }}` untuk nilai yang bisa negatif
+  (saldo kas) — hasilnya "Rp-9.000". Pakai `CashLedger::rupiah($x)`.
+- **Jangan taruh `qris_image` di `GroupSetting`** — tabel itu sudah DIHAPUS.
+  QRIS kelas sekarang di `groups.qris_image`, diunggah dari halaman Grup.
+- **Jangan hidupkan lagi `periods` / `group_settings` / halaman "Pengaturan
+  Kas" / menu "Periode" di admin.** Nominal kas per tagihan
+  (`cash_schedules.amount`), nama & kode undangan di halaman Grup.
+- **`Collection::merge()` pada hasil `->map()` dari Eloquent Collection
+  itu jebakan**: `map()` mengembalikan Eloquent Collection yang `merge()`-nya
+  memanggil `getKey()` (error "Call to a member function getKey() on array").
+  Tambahkan `->values()` atau `->toBase()` dulu. Ini pernah bikin
+  `/treasurer/reports` error 500.
+- **Import massal harus all-or-nothing**: validasi SEMUA baris dulu, dan
+  kalau ada yang salah jangan simpan apa pun — laporkan error per baris.
+  Kalau disimpan sebagian, bendahara tidak tahu baris mana yang sudah masuk.
 
 ## 8. Aturan Frontend & Desain (WAJIB dibaca sebelum menyentuh UI)
 
@@ -266,6 +373,10 @@ jadi jangan bergantung pada isi folder itu.
   struktur controller. Halaman publik di `resources/views/web/`.
 - Halaman auth pakai `layouts.app` (tanpa navbar/sidebar); halaman publik
   pakai `layouts.web`; halaman panel pakai `layouts.panel`.
+- Nama file view: halaman utama sebuah folder = `index.blade.php`
+  (mis. `profile/index.blade.php`, `student/bills/index.blade.php`),
+  bukan `edit`/`show` — walau controllernya method `edit()`.
+  Partial pakai prefix `_` (`_table`, `_modal`, `_import`).
 - CSS spesifik satu halaman ditulis di `@push('head')`, JS di
   `@push('scripts')` — jangan taruh di `resources/css/app.css` atau
   `resources/js/app.js` kecuali dipakai lintas halaman.

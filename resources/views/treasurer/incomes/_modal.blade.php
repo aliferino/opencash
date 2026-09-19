@@ -41,6 +41,14 @@
                 <input type="date" id="income-cash-date" required class="mt-1.5 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-[14px] text-ink outline-none focus:border-accent" />
             </div>
 
+            <div id="income-cash-remaining-box" class="hidden rounded-xl border border-line bg-bg px-4 py-3 text-[13px]">
+                <div class="flex items-center justify-between">
+                    <span class="text-muted">Sisa yang belum dibayar</span>
+                    <span id="income-cash-remaining" class="font-semibold text-ink">—</span>
+                </div>
+                <p id="income-cash-remaining-note" class="mt-1 text-[12px] text-muted"></p>
+            </div>
+
             <p id="income-cash-error" class="hidden text-[13px] text-red-400"></p>
 
             <div class="flex items-center justify-end gap-3 pt-2">
@@ -88,11 +96,21 @@
             </div>
         </div>
 
-        <div class="mt-4">
-            <label for="income-verify-fine" class="text-[13px] font-medium text-ink">Denda (Rp)</label>
-            <input type="number" id="income-verify-fine" min="0" value="0" class="mt-1.5 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-[14px] text-ink outline-none focus:border-accent" placeholder="0" />
-            <p class="mt-1.5 text-xs text-muted">Isi jika siswa terlambat membayar dari jatuh tempo.</p>
+        <div class="mt-4 grid grid-cols-2 gap-4">
+            <div>
+                <label for="income-verify-amount-input" class="text-[13px] font-medium text-ink">Nominal Kas (Rp)</label>
+                <input type="number" id="income-verify-amount-input" min="1" class="mt-1.5 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-[14px] text-ink outline-none focus:border-accent" />
+                <p class="mt-1.5 text-xs text-muted">Ubah kalau nominal di bukti transfer berbeda.</p>
+            </div>
+
+            <div>
+                <label for="income-verify-fine" class="text-[13px] font-medium text-ink">Denda (Rp)</label>
+                <input type="number" id="income-verify-fine" min="0" value="0" class="mt-1.5 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-[14px] text-ink outline-none focus:border-accent" placeholder="0" />
+                <p class="mt-1.5 text-xs text-muted">Isi jika siswa terlambat membayar.</p>
+            </div>
         </div>
+
+        <p id="income-verify-hint" class="mt-3 text-[12.5px] text-muted"></p>
 
         <p id="income-verify-error" class="mt-4 hidden text-[13px] text-red-400"></p>
 
@@ -131,6 +149,9 @@
         var dateInput = document.getElementById('income-cash-date');
         var cashSubmit = document.getElementById('income-cash-submit');
         var cashError = document.getElementById('income-cash-error');
+        var remainingBox = document.getElementById('income-cash-remaining-box');
+        var remainingEl = document.getElementById('income-cash-remaining');
+        var remainingNote = document.getElementById('income-cash-remaining-note');
 
         var detailModal = document.getElementById('income-detail-modal');
         var detailCloseBtn = document.getElementById('income-detail-close');
@@ -143,6 +164,8 @@
         var verifyStudent = document.getElementById('income-verify-student');
         var verifySchedule = document.getElementById('income-verify-schedule');
         var verifyAmount = document.getElementById('income-verify-amount');
+        var verifyAmountInput = document.getElementById('income-verify-amount-input');
+        var verifyHint = document.getElementById('income-verify-hint');
         var verifyFine = document.getElementById('income-verify-fine');
         var verifyError = document.getElementById('income-verify-error');
 
@@ -155,11 +178,13 @@
         var baseUrl = '{{ url('treasurer/cash-incomes') }}';
         var studentsUrl = '{{ route('treasurer.group.members.index') }}';
         var schedulesUrl = '{{ route('cash-schedules.index') }}';
+        var remainingUrl = '{{ route('treasurer.cash-incomes.remaining') }}';
         var csrf = '{{ csrf_token() }}';
 
         var students = [];
         var schedules = [];
         var currentVerifyId = null;
+        var currentRemaining = null;
 
         var statusLabels = { pending: 'Menunggu Verifikasi', verified: 'Terverifikasi', rejected: 'Ditolak' };
         var methodLabels = { cash: 'Tunai', qris: 'QRIS' };
@@ -227,13 +252,55 @@
             var opt = scheduleSelect.options[scheduleSelect.selectedIndex];
             var amount = opt ? opt.dataset.amount : '';
             if (amount) amountInput.value = amount;
+            refreshRemaining();
         });
+
+        // Ambil sisa tagihan siswa ini, lalu isi nominal otomatis dengan sisa
+        // tersebut — bendahara tinggal mengubah kalau siswa bayar sebagian.
+        function refreshRemaining() {
+            currentRemaining = null;
+            remainingBox.classList.add('hidden');
+            amountInput.removeAttribute('max');
+
+            if (!studentSelect.value || !scheduleSelect.value) return Promise.resolve();
+
+            return fetch(remainingUrl + '?cash_schedule_id=' + encodeURIComponent(scheduleSelect.value) + '&student_id=' + encodeURIComponent(studentSelect.value), {
+                headers: { Accept: 'application/json' },
+            })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    currentRemaining = data;
+                    amountInput.max = data.remaining;
+
+                    if (data.remaining > 0) amountInput.value = data.remaining;
+
+                    remainingEl.textContent = formatRupiah(data.remaining);
+                    remainingEl.className = data.remaining > 0 ? 'font-semibold text-red-400' : 'font-semibold text-emerald-400';
+
+                    var note = [];
+                    if (data.paid > 0) note.push('sudah bayar ' + formatRupiah(data.paid));
+                    if (data.pending > 0) note.push(formatRupiah(data.pending) + ' menunggu verifikasi');
+                    if (data.remaining === 0) note.push('tagihan sudah lunas');
+                    remainingNote.textContent = note.join(' · ');
+
+                    remainingBox.classList.remove('hidden');
+                })
+                .catch(function () {
+                    remainingNote.textContent = '';
+                    remainingBox.classList.add('hidden');
+                });
+        }
+
+        studentSelect.addEventListener('change', refreshRemaining);
 
         cashOpenBtn.addEventListener('click', function () {
             cashForm.reset();
             fineInput.value = 0;
             dateInput.value = todayValue();
             cashError.classList.add('hidden');
+            currentRemaining = null;
+            remainingBox.classList.add('hidden');
+            amountInput.removeAttribute('max');
             show(cashModal);
             loadStudents();
             loadSchedules();
@@ -249,10 +316,24 @@
             e.preventDefault();
             cashError.classList.add('hidden');
 
+            var amount = Number(amountInput.value || 0);
+
+            if (amount < 1) {
+                cashError.textContent = 'Nominal harus lebih dari 0.';
+                cashError.classList.remove('hidden');
+                return;
+            }
+
+            if (currentRemaining && amount > currentRemaining.remaining) {
+                cashError.textContent = 'Nominal melebihi sisa tagihan (' + formatRupiah(currentRemaining.remaining) + ').';
+                cashError.classList.remove('hidden');
+                return;
+            }
+
             var payload = {
                 student_id: studentSelect.value,
                 cash_schedule_id: scheduleSelect.value,
-                amount_paid: amountInput.value,
+                amount_paid: amount,
                 fine_paid: fineInput.value || 0,
                 income_date: dateInput.value,
             };
@@ -344,9 +425,31 @@
             verifyStudent.textContent = income.student ? income.student.name : '—';
             verifySchedule.textContent = income.cash_schedule ? income.cash_schedule.description : '—';
             verifyAmount.textContent = formatRupiah(Number(income.amount_paid || 0) + Number(income.fine_paid || 0));
+            verifyAmountInput.value = income.amount_paid || 0;
             verifyFine.value = income.fine_paid || 0;
             verifyError.classList.add('hidden');
+            verifyHint.textContent = '';
             show(verifyModal);
+
+            // Sisa tagihan dihitung dari pembayaran lain, jadi bendahara tahu
+            // batas maksimal nominal yang boleh dia verifikasi.
+            if (income.cash_schedule && income.student) {
+                fetch(remainingUrl + '?cash_schedule_id=' + encodeURIComponent(income.cash_schedule.id) + '&student_id=' + encodeURIComponent(income.student.id), {
+                    headers: { Accept: 'application/json' },
+                })
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        var othersPaid = data.paid + data.pending;
+                        var cap = Number(income.amount_paid || 0) + (Number(income.cash_schedule.amount || 0) - othersPaid);
+
+                        verifyAmountInput.max = Math.max(cap, 0);
+                        verifyHint.textContent = 'Sisa tagihan sebelum verifikasi ini: ' + formatRupiah(data.remaining) +
+                            ' (nominal maksimal ' + formatRupiah(Math.max(cap, 0)) + ').';
+                    })
+                    .catch(function () {
+                        verifyHint.textContent = '';
+                    });
+            }
         });
 
         [verifyCloseBtn, verifyCancelBtn].forEach(function (btn) {
@@ -369,7 +472,11 @@
                     Accept: 'application/json',
                     'X-CSRF-TOKEN': csrf,
                 },
-                body: JSON.stringify({ status: 'verified', fine_paid: verifyFine.value || 0 }),
+                body: JSON.stringify({
+                    status: 'verified',
+                    amount_paid: Number(verifyAmountInput.value || 0),
+                    fine_paid: verifyFine.value || 0,
+                }),
             })
                 .then(function (res) {
                     if (!res.ok) return res.json().then(function (d) { throw d; });

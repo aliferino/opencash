@@ -7,6 +7,7 @@ use App\Models\Group;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
@@ -58,6 +59,35 @@ class GroupController extends Controller
         $group->update(['invite_code' => $code]);
 
         return response()->json(['invite_code' => $code]);
+    }
+
+    /**
+     * Unggah/ganti gambar QRIS kelas.
+     *
+     * Dulu QRIS nempel di `group_settings` per periode; sekarang langsung di
+     * `groups.qris_image` karena periode sudah dihapus (lihat migrasi
+     * move_qris_to_groups_and_drop_periods).
+     */
+    public function uploadQris(Request $request)
+    {
+        $group = $this->groupOf($request);
+
+        $request->validate([
+            'qris_image' => ['required', 'image', 'max:2048'],
+        ]);
+
+        if ($group->qris_image) {
+            Storage::disk('public')->delete($group->qris_image);
+        }
+
+        $path = $request->file('qris_image')->store('qris', 'public');
+
+        $group->update(['qris_image' => $path]);
+
+        return response()->json([
+            ...$group->fresh()->toArray(),
+            'qris_url' => Storage::disk('public')->url($path),
+        ]);
     }
 
     public function members(Request $request)

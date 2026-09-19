@@ -24,8 +24,6 @@
                 <option value="expense">Pengeluaran</option>
             </select>
         </div>
-
-        <p id="ledger-total" class="text-[13px] text-muted"></p>
     </div>
 
     <div
@@ -66,7 +64,6 @@
         var container = document.getElementById('ledger-table');
         var body = document.getElementById('ledger-table-body');
         var info = document.getElementById('ledger-table-info');
-        var totalEl = document.getElementById('ledger-total');
         var prevBtn = document.getElementById('ledger-prev');
         var nextBtn = document.getElementById('ledger-next');
         var searchInput = document.getElementById('ledger-search');
@@ -212,20 +209,10 @@
                     prevBtn.disabled = page <= 1;
                     nextBtn.disabled = page >= lastPage;
 
-                    var incomeTotal = 0;
-                    var expenseTotal = 0;
-                    rows.forEach(function (row) {
-                        if (row.type === 'income') incomeTotal += row.amount;
-                        else expenseTotal += row.amount;
-                    });
-
-                    totalEl.textContent = 'Pemasukan ' + formatRupiah(incomeTotal) + ' · Pengeluaran ' + formatRupiah(expenseTotal);
-
                     if (window.lucideRefresh) window.lucideRefresh();
                 })
                 .catch(function () {
                     body.innerHTML = emptyRow('Gagal memuat data.');
-                    totalEl.textContent = '';
                 });
         }
 

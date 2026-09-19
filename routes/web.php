@@ -3,20 +3,23 @@
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\GroupController as AdminGroupController;
-use App\Http\Controllers\Admin\PeriodController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
+use App\Http\Controllers\Student\HistoryController as StudentHistoryController;
 use App\Http\Controllers\Student\PaymentController;
+use App\Http\Controllers\Student\StudentCashController;
 use App\Http\Controllers\Treasurer\CashExpenseController;
+use App\Http\Controllers\Treasurer\CashExpenseImportController;
 use App\Http\Controllers\Treasurer\CashIncomeController;
+use App\Http\Controllers\Treasurer\CashIncomeImportController;
 use App\Http\Controllers\Treasurer\CashScheduleController;
 use App\Http\Controllers\Treasurer\DashboardController as TreasurerDashboardController;
 use App\Http\Controllers\Treasurer\GroupController as TreasurerGroupController;
-use App\Http\Controllers\Treasurer\GroupSettingController;
 use App\Http\Controllers\Treasurer\ReportController;
 use Illuminate\Support\Facades\Route;
 
@@ -89,8 +92,6 @@ Route::middleware('auth')->group(function () {
         Route::put('users/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::delete('users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
 
-        Route::apiResource('periods', PeriodController::class)->except(['show']);
-
         Route::get('audits', [AuditController::class, 'index'])->name('audits.index');
     });
 
@@ -99,10 +100,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [TreasurerDashboardController::class, 'index'])->name('dashboard');
 
         // Grup: bendahara hanya mengelola grupnya sendiri — ubah nama, refresh kode
-        // undangan, dan kelola anggota. TIDAK bisa membuat atau menghapus grup.
+        // undangan, kelola anggota, dan atur QRIS kelas. TIDAK bisa membuat
+        // atau menghapus grup (itu wewenang admin).
         Route::get('group', [TreasurerGroupController::class, 'index'])->name('group.index');
         Route::put('group', [TreasurerGroupController::class, 'update'])->name('group.update');
         Route::post('group/invite-code/refresh', [TreasurerGroupController::class, 'refreshInviteCode'])->name('group.invite-code.refresh');
+        Route::post('group/qris', [TreasurerGroupController::class, 'uploadQris'])->name('group.qris');
 
         Route::get('group/members', [TreasurerGroupController::class, 'members'])->name('group.members.index');
         Route::post('group/members', [TreasurerGroupController::class, 'storeMember'])->name('group.members.store');
@@ -110,22 +113,22 @@ Route::middleware('auth')->group(function () {
         Route::post('group/members/{member}/role', [TreasurerGroupController::class, 'changeRole'])->name('group.members.change-role');
         Route::delete('group/members/{student}', [TreasurerGroupController::class, 'destroyMember'])->name('group.members.destroy');
 
-        Route::get('group-settings', [GroupSettingController::class, 'index'])->name('group-settings.index');
-        Route::post('group-settings', [GroupSettingController::class, 'store'])->name('group-settings.store');
-        Route::put('group-settings/{groupSetting}', [GroupSettingController::class, 'update'])->name('group-settings.update');
-        Route::delete('group-settings/{groupSetting}', [GroupSettingController::class, 'destroy'])->name('group-settings.destroy');
-        Route::post('group-settings/{groupSetting}/qris', [GroupSettingController::class, 'uploadQris'])->name('group-settings.qris');
-        Route::get('periods', [PeriodController::class, 'index'])->name('periods.index');   // ← tambahkan baris ini
-
         Route::post('cash-schedules', [CashScheduleController::class, 'store'])->name('cash-schedules.store');
         Route::put('cash-schedules/{cashSchedule}', [CashScheduleController::class, 'update'])->name('cash-schedules.update');
         Route::delete('cash-schedules/{cashSchedule}', [CashScheduleController::class, 'destroy'])->name('cash-schedules.destroy');
 
         Route::post('cash-incomes/cash', [CashIncomeController::class, 'storeCash'])->name('cash-incomes.store-cash');
+        Route::get('cash-incomes/remaining', [CashIncomeController::class, 'remaining'])->name('cash-incomes.remaining');
         Route::post('cash-incomes/{cashIncome}/verify', [CashIncomeController::class, 'verify'])->name('cash-incomes.verify');
+
+        // Import/export bulk — dipisah seperti sisi siswa (HistoryController).
+        Route::get('cash-incomes/import/template', [CashIncomeImportController::class, 'template'])->name('cash-incomes.import.template');
+        Route::post('cash-incomes/import', [CashIncomeImportController::class, 'store'])->name('cash-incomes.import.store');
 
         Route::post('cash-expenses', [CashExpenseController::class, 'store'])->name('cash-expenses.store');
         Route::delete('cash-expenses/{cashExpense}', [CashExpenseController::class, 'destroy'])->name('cash-expenses.destroy');
+        Route::get('cash-expenses/import/template', [CashExpenseImportController::class, 'template'])->name('cash-expenses.import.template');
+        Route::post('cash-expenses/import', [CashExpenseImportController::class, 'store'])->name('cash-expenses.import.store');
 
         // Laporan: satu halaman (ringkasan + rincian pemasukan/pengeluaran),
         // endpoint JSON dipakai untuk memuat rincian secara async.
@@ -140,17 +143,29 @@ Route::middleware('auth')->group(function () {
     });
 
     // =========================== STUDENT (per kelas) ==========================
+    // Siswa hanya READ: tagihan miliknya, riwayat pembayarannya, dan kondisi
+    // kas kelas. Tidak ada route CRUD tagihan di sini — itu wewenang bendahara.
     Route::middleware('role:student')->prefix('student')->name('student.')->group(function () {
         Route::get('/', [StudentDashboardController::class, 'index'])->name('dashboard');
         Route::get('bills', [PaymentController::class, 'index'])->name('bills.index');
+        Route::get('cash', [StudentCashController::class, 'index'])->name('cash.index');
+        Route::get('history', [StudentHistoryController::class, 'index'])->name('history.index');
+        Route::get('history/export/pdf', [StudentHistoryController::class, 'exportPdf'])->name('history.export.pdf');
+        Route::get('history/export/excel', [StudentHistoryController::class, 'exportExcel'])->name('history.export.excel');
         Route::post('cash-incomes/qris', [CashIncomeController::class, 'storeQris'])->name('cash-incomes.store-qris');
-        Route::get('history', function () {
-            return view('history.index');
-        })->name('history.index');
     });
 
-    // ============ SHARED (dibaca oleh treasurer & student di kelas yang sama) ============
+    // Profil sendiri — bendahara & siswa (hanya menyentuh akun sendiri).
     Route::middleware('role:treasurer,student')->group(function () {
+        Route::get('profile', [ProfileController::class, 'edit'])->name('profile.edit');
+        Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
+    });
+
+    // ============ SHARED endpoint JSON — HANYA bendahara ============
+    // Sebelumnya grup ini `role:treasurer,student`, jadi siswa bisa membuka
+    // halaman CRUD Jadwal Tagihan (lengkap dengan tombol tambah/edit/hapus).
+    // Sekarang dikunci ke bendahara; siswa punya halaman sendiri di atas.
+    Route::middleware('role:treasurer')->group(function () {
         Route::get('cash-schedules', [CashScheduleController::class, 'index'])->name('cash-schedules.index');
         Route::get('cash-expenses', [CashExpenseController::class, 'index'])->name('cash-expenses.index');
         Route::get('cash-incomes', [CashIncomeController::class, 'index'])->name('cash-incomes.index');

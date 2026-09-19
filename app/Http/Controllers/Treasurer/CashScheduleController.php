@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Treasurer;
 use App\Http\Controllers\Controller;
 use App\Models\CashIncome;
 use App\Models\CashSchedule;
+use App\Models\User;
+use App\Support\CashLedger;
 use Illuminate\Http\Request;
 
 class CashScheduleController extends Controller
@@ -22,14 +24,29 @@ class CashScheduleController extends Controller
             ->get();
 
         if ($user->isStudent()) {
-            $paidScheduleIds = CashIncome::where('student_id', $user->id)
-                ->where('status', 'verified')
-                ->pluck('cash_schedule_id');
+            $incomes = CashIncome::where('student_id', $user->id)
+                ->whereIn('status', ['verified', 'pending'])
+                ->get();
 
-            $schedules->each(function (CashSchedule $schedule) use ($paidScheduleIds) {
-                $schedule->is_paid = $paidScheduleIds->contains($schedule->id);
-            });
+            return response()->json(
+                CashLedger::billSummaries($schedules, $incomes)
+            );
         }
+
+        // Bendahara butuh progres kelas: berapa yang sudah terkumpul dan
+        // berapa siswa yang masih kurang, bukan cuma daftar tagihannya.
+        $students = User::where('group_id', $user->group_id)
+            ->where('role', 'student')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $incomes = CashIncome::whereHas('cashSchedule', fn ($q) => $q->where('group_id', $user->group_id))
+            ->whereIn('status', ['verified', 'pending'])
+            ->get();
+
+        $schedules->each(function (CashSchedule $schedule) use ($students, $incomes) {
+            $schedule->progress = CashLedger::scheduleProgress($schedule, $students, $incomes);
+        });
 
         return response()->json($schedules);
     }

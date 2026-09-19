@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
+use App\Models\CashExpense;
 use App\Models\CashIncome;
 use App\Models\CashSchedule;
+use App\Support\CashLedger;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -18,28 +20,34 @@ class DashboardController extends Controller
             ->orderByDesc('due_date')
             ->get();
 
-        $incomes = CashIncome::where('student_id', $student->id)->get();
+        $incomes = CashIncome::where('student_id', $student->id)
+            ->whereIn('status', ['verified', 'pending'])
+            ->get();
 
-        $verifiedIds = $incomes->where('status', 'verified')->pluck('cash_schedule_id');
-        $pendingIds = $incomes->where('status', 'pending')->pluck('cash_schedule_id');
+        $bills = CashLedger::billSummaries($schedules, $incomes);
 
-        $schedules->each(function (CashSchedule $schedule) use ($verifiedIds, $pendingIds) {
-            $schedule->is_paid = $verifiedIds->contains($schedule->id);
-            $schedule->is_pending = $pendingIds->contains($schedule->id);
-        });
-
-        $unpaidSchedules = $schedules
-            ->reject(fn (CashSchedule $s) => $s->is_paid || $s->is_pending)
+        // Tagihan yang belum lunas — termasuk yang BARU DIBAYAR SEBAGIAN,
+        // karena sisanya masih harus ditagih.
+        $unpaidBills = $bills
+            ->reject(fn (array $bill) => $bill['is_paid'])
             ->values();
 
-        $totalPaid = (int) $incomes->where('status', 'verified')
-            ->sum(fn (CashIncome $i) => $i->amount_paid + $i->fine_paid);
+        $recentExpenses = CashExpense::where('group_id', $student->group_id)
+            ->with('treasurer:id,name')
+            ->orderByDesc('expense_date')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get();
 
         return view('student.index', [
-            'schedules' => $schedules,
-            'unpaidSchedules' => $unpaidSchedules,
-            'unpaidCount' => $unpaidSchedules->count(),
-            'totalPaid' => $totalPaid,
+            'bills' => $bills,
+            'unpaidBills' => $unpaidBills,
+            'unpaidCount' => $unpaidBills->count(),
+            'totalPaid' => (int) $bills->sum('paid'),
+            'totalRemaining' => (int) $bills->sum('remaining'),
+            'pendingTotal' => (int) $bills->sum('pending'),
+            'balance' => CashLedger::balance($student->group_id),
+            'recentExpenses' => $recentExpenses,
         ]);
     }
 }

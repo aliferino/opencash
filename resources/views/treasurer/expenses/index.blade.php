@@ -3,14 +3,25 @@
 @section('title', 'Pengeluaran Kas — OpenCash')
 
 @section('panel')
-    <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-ink">Pengeluaran Kas</h1>
-        <p class="mt-1 text-[15px] text-muted">Catat pengeluaran kas kelas beserta foto nota sebagai bukti.</p>
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight text-ink">Pengeluaran Kas</h1>
+            <p class="mt-1 text-[15px] text-muted">Catat pengeluaran kas kelas beserta foto nota sebagai bukti.</p>
+        </div>
+
+        <button
+            type="button"
+            id="expense-import-open"
+            class="inline-flex items-center gap-2 rounded-md border border-line bg-surface px-4 py-2.5 text-[14px] font-medium text-ink transition-colors hover:border-accent hover:text-accent-bright"
+        >
+            <i data-lucide="upload" class="h-4 w-4" stroke-width="1.8"></i>
+            Import Excel
+        </button>
     </div>
 
     <div class="mt-6 grid gap-5 sm:grid-cols-2">
         <div class="rounded-2xl border border-line bg-surface p-6">
-            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-accent-tint text-accent-bright">
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-red-500/10 text-red-400">
                 <i data-lucide="receipt" class="h-4 w-4" stroke-width="1.8"></i>
             </span>
             <p class="mt-4 text-[13px] text-muted">Jumlah Pengeluaran</p>
@@ -28,4 +39,5 @@
 
     @include('treasurer.expenses._table')
     @include('treasurer.expenses._modal')
+    @include('treasurer.expenses._import')
 @endsection

@@ -9,27 +9,53 @@
             <p class="mt-1 text-[15px] text-muted">Ringkasan kondisi kas kelas Anda beserta rincian arus kasnya.</p>
         </div>
 
-        <div class="flex items-center gap-2">
-            <button
-                type="button"
-                disabled
-                title="Export PDF belum aktif"
-                class="flex cursor-not-allowed items-center gap-2 rounded-md border border-line px-4 py-2.5 text-[14px] font-medium text-muted opacity-50"
-            >
-                <i data-lucide="file-text" class="h-4 w-4" stroke-width="1.8"></i>
-                Export PDF
-            </button>
-            <button
-                type="button"
-                disabled
-                title="Export Excel belum aktif"
-                class="flex cursor-not-allowed items-center gap-2 rounded-md border border-line px-4 py-2.5 text-[14px] font-medium text-muted opacity-50"
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="relative">
+                <select id="report-export-scope" class="appearance-none rounded-md border border-line bg-surface py-2.5 pl-3 pr-9 text-[14px] text-ink outline-none focus:border-accent">
+                    <option value="all">Pemasukan &amp; Pengeluaran</option>
+                    <option value="income">Pemasukan saja</option>
+                    <option value="expense">Pengeluaran saja</option>
+                </select>
+                <i data-lucide="chevron-down" class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" stroke-width="1.8"></i>
+            </div>
+
+            <a
+                id="report-export-excel"
+                href="{{ route('treasurer.reports.export.excel') }}"
+                class="flex items-center gap-2 rounded-md border border-line px-4 py-2.5 text-[14px] font-medium text-ink transition-colors hover:border-accent hover:text-accent-bright"
             >
                 <i data-lucide="table" class="h-4 w-4" stroke-width="1.8"></i>
                 Export Excel
-            </button>
+            </a>
+
+            <a
+                id="report-export-pdf"
+                href="{{ route('treasurer.reports.export.pdf') }}"
+                class="flex items-center gap-2 rounded-md border border-line px-4 py-2.5 text-[14px] font-medium text-ink transition-colors hover:border-accent hover:text-accent-bright"
+            >
+                <i data-lucide="file-text" class="h-4 w-4" stroke-width="1.8"></i>
+                Export PDF
+            </a>
         </div>
     </div>
+
+    <script>
+        (function () {
+            var scopeSelect = document.getElementById('report-export-scope');
+            var excelLink = document.getElementById('report-export-excel');
+            var pdfLink = document.getElementById('report-export-pdf');
+
+            // Tombol export mengikuti pilihan cakupan (pemasukan/pengeluaran/semua).
+            function sync() {
+                var scope = scopeSelect.value;
+                excelLink.href = '{{ route('treasurer.reports.export.excel') }}?scope=' + scope;
+                pdfLink.href = '{{ route('treasurer.reports.export.pdf') }}?scope=' + scope;
+            }
+
+            scopeSelect.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
 
     <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-2xl border border-line bg-surface p-6">
@@ -37,7 +63,7 @@
                 <i data-lucide="wallet" class="h-4 w-4" stroke-width="1.8"></i>
             </span>
             <p class="mt-4 text-[13px] text-muted">Saldo Kas</p>
-            <p class="mt-1 text-3xl font-semibold text-ink">Rp{{ number_format($summary['balance'], 0, ',', '.') }}</p>
+            <p class="mt-1 text-3xl font-semibold text-ink">{{ \App\Support\CashLedger::rupiah($summary['balance']) }}</p>
         </div>
 
         <div class="rounded-2xl border border-line bg-surface p-6">

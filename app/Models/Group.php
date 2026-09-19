@@ -13,16 +13,12 @@ class Group extends Model
     protected $fillable = [
         'name',
         'invite_code',
+        'qris_image',
     ];
 
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
-    }
-
-    public function groupSettings(): HasMany
-    {
-        return $this->hasMany(GroupSetting::class);
     }
 
     public function cashSchedules(): HasMany

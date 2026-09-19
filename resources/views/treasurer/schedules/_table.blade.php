@@ -29,13 +29,15 @@
             <tr class="border-b border-line text-xs uppercase tracking-wide text-muted">
                 <th class="px-6 py-4 font-medium">Deskripsi</th>
                 <th class="px-6 py-4 font-medium">Jatuh Tempo</th>
-                <th class="px-6 py-4 font-medium">Nominal</th>
+                <th class="px-6 py-4 font-medium text-right">Nominal</th>
+                <th class="px-6 py-4 font-medium">Terkumpul</th>
+                <th class="px-6 py-4 font-medium">Siswa</th>
                 <th class="px-6 py-4 font-medium text-right">Aksi</th>
             </tr>
         </thead>
         <tbody id="schedules-table-body" class="divide-y divide-line">
             <tr>
-                <td colspan="4" class="px-6 py-10 text-center text-muted">Memuat data...</td>
+                <td colspan="6" class="px-6 py-10 text-center text-muted">Memuat data...</td>
             </tr>
         </tbody>
     </table>
@@ -66,11 +68,48 @@
         function formatDate(value) {
             if (!value) return '—';
             var d = new Date(value);
+            if (isNaN(d.getTime())) return value;
             return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
         }
 
         function emptyRow(text) {
-            return '<tr><td colspan="4" class="px-6 py-10 text-center text-muted">' + text + '</td></tr>';
+            return '<tr><td colspan="6" class="px-6 py-10 text-center text-muted">' + text + '</td></tr>';
+        }
+
+        function progressCell(progress) {
+            if (!progress || !progress.target) {
+                return '<span class="text-muted">Belum ada siswa</span>';
+            }
+
+            var percent = Math.min(100, Math.round(progress.paid / progress.target * 100));
+            var complete = progress.remaining === 0;
+            var studentCount = (progress.paid_students || 0) + (progress.partial_students || 0) + (progress.unpaid_students || 0);
+
+            return '' +
+                '<div class="min-w-[10rem]">' +
+                    '<div class="flex items-center justify-between gap-2 text-[13px]">' +
+                        '<span class="' + (complete ? 'text-emerald-400' : 'text-ink') + '">' + formatRupiah(progress.paid) + '</span>' +
+                        '<span class="text-muted">' + percent + '%</span>' +
+                    '</div>' +
+                    '<div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/8">' +
+                        '<span class="block h-full rounded-full ' + (complete ? 'bg-emerald-400' : 'bg-accent') + '" style="width: ' + percent + '%"></span>' +
+                    '</div>' +
+                    '<p class="mt-1 text-[11px] text-muted">dari target ' + formatRupiah(progress.target) +
+                        ' (' + studentCount + ' siswa)' +
+                        (progress.pending > 0 ? ' &middot; ' + formatRupiah(progress.pending) + ' menunggu' : '') +
+                    '</p>' +
+                '</div>';
+        }
+
+        function studentCell(progress) {
+            if (!progress || !progress.target) return '<span class="text-muted">—</span>';
+
+            var parts = [];
+            if (progress.paid_students > 0) parts.push('<span class="text-emerald-400">' + progress.paid_students + ' lunas</span>');
+            if (progress.partial_students > 0) parts.push('<span class="text-amber-400">' + progress.partial_students + ' kurang</span>');
+            if (progress.unpaid_students > 0) parts.push('<span class="text-red-400">' + progress.unpaid_students + ' belum</span>');
+
+            return '<div class="space-y-0.5 text-[12.5px]">' + (parts.length ? parts.map(function (p) { return '<div>' + p + '</div>'; }).join('') : '<span class="text-muted">—</span>') + '</div>';
         }
 
         function renderRow(schedule) {
@@ -78,7 +117,9 @@
                 '<tr class="transition-colors hover:bg-white/5">' +
                     '<td class="px-6 py-4 font-medium text-ink">' + escapeHtml(schedule.description) + '</td>' +
                     '<td class="px-6 py-4 text-muted">' + formatDate(schedule.due_date) + '</td>' +
-                    '<td class="px-6 py-4 text-ink">' + formatRupiah(schedule.amount) + '</td>' +
+                    '<td class="px-6 py-4 text-right text-ink">' + formatRupiah(schedule.amount) + '</td>' +
+                    '<td class="px-6 py-4">' + progressCell(schedule.progress) + '</td>' +
+                    '<td class="px-6 py-4">' + studentCell(schedule.progress) + '</td>' +
                     '<td class="relative px-6 py-4 text-right">' +
                         '<button ' +
                             'type="button" ' +
@@ -87,11 +128,15 @@
                             'data-id="' + schedule.id + '" ' +
                             'data-description="' + escapeHtml(schedule.description) + '" ' +
                             'data-due-date="' + String(schedule.due_date).slice(0, 10) + '" ' +
-                            'data-amount="' + schedule.amount + '"' +
+                            'data-amount="' + schedule.amount + '" ' +
+                            'data-progress="' + escapeHtml(JSON.stringify(schedule.progress || null)) + '"' +
                         '>' +
                             '<i data-lucide="ellipsis" class="h-4 w-4" stroke-width="1.8"></i>' +
                         '</button>' +
-                        '<div class="schedule-actions-menu hidden absolute right-6 top-full z-20 mt-1 w-36 overflow-hidden rounded-md border border-line bg-surface shadow-lg">' +
+                        '<div class="schedule-actions-menu hidden absolute right-6 top-full z-20 mt-1 w-40 overflow-hidden rounded-md border border-line bg-surface shadow-lg">' +
+                            '<button type="button" class="schedule-action-detail flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13px] text-ink transition-colors hover:bg-white/5">' +
+                                '<i data-lucide="users" class="h-3.5 w-3.5" stroke-width="1.8"></i> Rincian' +
+                            '</button>' +
                             '<button type="button" class="schedule-action-edit flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13px] text-ink transition-colors hover:bg-white/5">' +
                                 '<i data-lucide="pencil" class="h-3.5 w-3.5" stroke-width="1.8"></i> Edit' +
                             '</button>' +
@@ -145,6 +190,10 @@
             searchTimer = setTimeout(applySearch, 250);
         });
 
+        function actionsBtnOf(el) {
+            return el.closest('td').querySelector('.schedule-actions-btn');
+        }
+
         body.addEventListener('click', function (e) {
             var toggleBtn = e.target.closest('.schedule-actions-btn');
             if (toggleBtn) {
@@ -155,16 +204,33 @@
                 return;
             }
 
+            var detailBtn = e.target.closest('.schedule-action-detail');
+            if (detailBtn) {
+                var btn = actionsBtnOf(detailBtn);
+                var progress = null;
+                try { progress = JSON.parse(btn.dataset.progress || 'null'); } catch (err) { progress = null; }
+                closeAllMenus();
+                window.dispatchEvent(new CustomEvent('schedule:detail', {
+                    detail: {
+                        description: btn.dataset.description,
+                        dueDate: btn.dataset.dueDate,
+                        amount: btn.dataset.amount,
+                        progress: progress,
+                    },
+                }));
+                return;
+            }
+
             var editBtn = e.target.closest('.schedule-action-edit');
             if (editBtn) {
-                var actionsBtn = editBtn.closest('td').querySelector('.schedule-actions-btn');
+                var editActions = actionsBtnOf(editBtn);
                 closeAllMenus();
                 window.dispatchEvent(new CustomEvent('schedule:manage', {
                     detail: {
-                        id: actionsBtn.dataset.id,
-                        description: actionsBtn.dataset.description,
-                        dueDate: actionsBtn.dataset.dueDate,
-                        amount: actionsBtn.dataset.amount,
+                        id: editActions.dataset.id,
+                        description: editActions.dataset.description,
+                        dueDate: editActions.dataset.dueDate,
+                        amount: editActions.dataset.amount,
                     },
                 }));
                 return;
@@ -172,11 +238,11 @@
 
             var deleteBtn = e.target.closest('.schedule-action-delete');
             if (deleteBtn) {
-                var delActionsBtn = deleteBtn.closest('td').querySelector('.schedule-actions-btn');
+                var delActions = actionsBtnOf(deleteBtn);
                 closeAllMenus();
-                if (!confirm('Hapus tagihan "' + delActionsBtn.dataset.description + '"? Tindakan ini tidak bisa dibatalkan.')) return;
+                if (!confirm('Hapus tagihan "' + delActions.dataset.description + '"? Tindakan ini tidak bisa dibatalkan.')) return;
 
-                fetch('{{ url('treasurer/cash-schedules') }}/' + delActionsBtn.dataset.id, {
+                fetch('{{ url('treasurer/cash-schedules') }}/' + delActions.dataset.id, {
                     method: 'DELETE',
                     headers: {
                         Accept: 'application/json',
@@ -185,7 +251,7 @@
                 })
                     .then(function (res) {
                         if (!res.ok) return res.json().then(function (d) { throw d; });
-                        return res.status === 204 ? null : res.json();
+                        return res.status(204) ? null : res.json();
                     })
                     .then(function () { load(); })
                     .catch(function (d) { alert((d && d.message) || 'Gagal menghapus tagihan.'); });
