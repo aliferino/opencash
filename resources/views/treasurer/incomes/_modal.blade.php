@@ -404,7 +404,7 @@
             proofCaption.textContent = (income.student ? income.student.name : '') + ' — ' + formatRupiah(Number(income.amount_paid || 0) + Number(income.fine_paid || 0));
 
             if (income.proof_image) {
-                proofImage.src = '/storage/' + income.proof_image;
+                proofImage.src = income.proof_image_url;
                 proofImage.classList.remove('hidden');
                 proofEmpty.classList.add('hidden');
             } else {

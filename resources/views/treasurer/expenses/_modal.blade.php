@@ -210,7 +210,7 @@
             proofCaption.textContent = formatDate(expense.expense_date) + ' — ' + formatRupiah(expense.amount);
 
             if (expense.proof_image) {
-                proofImage.src = '/storage/' + expense.proof_image;
+                proofImage.src = expense.proof_image_url;
                 proofImage.classList.remove('hidden');
                 proofEmpty.classList.add('hidden');
             } else {
