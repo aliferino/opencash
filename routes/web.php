@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
     // Onboarding: cuma untuk treasurer/student yang belum join kelas.
     // Admin tidak pernah lewat sini (tidak terikat kelas manapun).
     Route::get('onboarding', [OnboardingController::class, 'index'])->name('onboarding');
+    Route::get('onboarding/status', [OnboardingController::class, 'status'])->name('onboarding.status');
     Route::post('onboarding/join', [OnboardingController::class, 'join'])->name('onboarding.join');
 
     // Notifikasi — dipakai semua role, polling dari lonceng navbar.

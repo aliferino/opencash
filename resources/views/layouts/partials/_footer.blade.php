@@ -20,7 +20,7 @@
                 <ul class="mt-4 space-y-3 text-[15px] text-muted">
                     <li><a href="{{ route('home') }}" class="hover:text-accent-bright">Beranda</a></li>
                     <li><a href="{{ route('about') }}" class="hover:text-accent-bright">Tentang &amp; fitur</a></li>
-                    <li><a href="{{ route('works') }}" class="hover:text-accent-bright">Karya</a></li>
+                    <li><a href="{{ route('works') }}" class="hover:text-accent-bright">Cara kerja</a></li>
                 </ul>
             </div>
 

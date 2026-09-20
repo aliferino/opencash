@@ -213,6 +213,10 @@
 @push('head')
 <style>
     .auth-shell {
+        /* satu set token gerak supaya panel dan isinya bergerak seirama */
+        --auth-slide: 620ms;
+        --auth-ease: cubic-bezier(0.65, 0, 0.35, 1);
+        --auth-rise: cubic-bezier(0.22, 1, 0.36, 1);
         position: relative;
         width: 100%;
         max-width: 1180px;
@@ -221,23 +225,18 @@
         margin: 0 auto;
         border-radius: 1.5rem;
         overflow: hidden;
-        background-color: #101935;
+        isolation: isolate;
         border: 1px solid rgba(255, 255, 255, 0.07);
+        /* Butiran halus dipasang sebagai background, bukan overlay
+           ber-mix-blend-mode. blend-mode di atas dua panel besar yang bergeser
+           memaksa seluruh shell di-recomposite tiap frame — itu penyebab
+           animasinya patah-patah, bukan karena durasinya kurang lama. */
+        background-color: #101935;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E");
+        background-size: 140px 140px;
         box-shadow:
             0 60px 160px -40px rgba(62, 123, 255, 0.42),
             0 2px 0 0 rgba(255, 255, 255, 0.04) inset;
-    }
-
-    /* butiran halus supaya permukaan tidak terasa flat/digital */
-    .auth-shell::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        z-index: 40;
-        pointer-events: none;
-        opacity: 0.05;
-        mix-blend-mode: overlay;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
     }
 
     .auth-forms-wrap {
@@ -248,7 +247,7 @@
         height: 100%;
         z-index: 10;
         will-change: transform;
-        transition: transform 0.78s cubic-bezier(0.76, 0, 0.24, 1);
+        transition: transform var(--auth-slide) var(--auth-ease);
     }
     .auth-shell.active .auth-forms-wrap { transform: translateX(-100%); }
 
@@ -266,38 +265,49 @@
         margin: auto 0;
         width: 100%;
         transition:
-            opacity 0.34s ease,
-            transform 0.62s cubic-bezier(0.22, 1, 0.36, 1);
+            opacity 240ms ease,
+            transform 520ms var(--auth-ease);
     }
 
-    /* form yang keluar cepat dibersihkan, form yang masuk menyusul setelah panel hampir sampai */
+    /* Satu sumber opacity: panel (.auth-form-inner) yang memudar, sedangkan
+       anak-anaknya hanya bergeser. Dulu opacity dianimasikan di dua lapisan
+       (parent + keyframes anak) sehingga konten baru terlihat setengah jalan
+       dan terasa "berat". */
     .form-sign-in { z-index: 5; }
-    .form-sign-in .auth-form-inner { opacity: 1; transform: none; transition-delay: 0.16s; }
+    .form-sign-in .auth-form-inner { opacity: 1; transform: none; transition-delay: 80ms; }
     .form-sign-up { z-index: 1; pointer-events: none; }
-    .form-sign-up .auth-form-inner { opacity: 0; transform: translateX(26px); transition-delay: 0s; }
+    .form-sign-up .auth-form-inner { opacity: 0; transform: translateX(30px); transition-delay: 0ms; }
 
     .auth-shell.active .form-sign-in { z-index: 1; pointer-events: none; }
-    .auth-shell.active .form-sign-in .auth-form-inner { opacity: 0; transform: translateX(-26px); transition-delay: 0s; }
+    .auth-shell.active .form-sign-in .auth-form-inner { opacity: 0; transform: translateX(-30px); transition-delay: 0ms; }
     .auth-shell.active .form-sign-up { z-index: 5; pointer-events: auto; }
-    .auth-shell.active .form-sign-up .auth-form-inner { opacity: 1; transform: none; transition-delay: 0.16s; }
+    .auth-shell.active .form-sign-up .auth-form-inner { opacity: 1; transform: none; transition-delay: 80ms; }
 
-    /* masuk dengan stagger halus, tidak muncul sekaligus.
-       class .is-entering dipasang ulang lewat JS tiap kali form bergantian,
-       jadi animasinya replay di kedua arah (login <-> daftar). */
-    .auth-form.is-entering .auth-form-inner > * {
-        animation: auth-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    /* stagger: judul lalu field, bergeser naik berurutan supaya perpindahannya
+       terbaca sebagai satu gerakan, bukan konten yang muncul sekaligus.
+       class .is-entering dipasang ulang lewat JS tiap form bergantian. */
+    .auth-form.is-entering .auth-form-inner > *:not(.auth-form-body) {
+        animation: auth-rise 460ms var(--auth-rise) both;
     }
-    .auth-form.is-entering .auth-form-inner > *:nth-child(1) { animation-delay: 0.2s; }
-    .auth-form.is-entering .auth-form-inner > *:nth-child(2) { animation-delay: 0.25s; }
-    .auth-form.is-entering .auth-form-inner > *:nth-child(3) { animation-delay: 0.3s; }
-    .auth-form.is-entering .auth-form-inner > *:nth-child(4) { animation-delay: 0.35s; }
-    .auth-form.is-entering .auth-form-inner > *:nth-child(5) { animation-delay: 0.4s; }
-    .auth-form.is-entering .auth-form-inner > *:nth-child(6) { animation-delay: 0.45s; }
-    .auth-form.is-entering .auth-form-inner > *:nth-child(n + 7) { animation-delay: 0.5s; }
+    .auth-form.is-entering .auth-form-inner > *:not(.auth-form-body):nth-child(1) { animation-delay: 60ms; }
+    .auth-form.is-entering .auth-form-inner > *:not(.auth-form-body):nth-child(2) { animation-delay: 100ms; }
+    .auth-form.is-entering .auth-form-inner > *:not(.auth-form-body):nth-child(3) { animation-delay: 140ms; }
+    .auth-form.is-entering .auth-form-inner > *:not(.auth-form-body):nth-child(n + 4) { animation-delay: 180ms; }
 
+    .auth-form.is-entering .auth-form-body > * {
+        animation: auth-rise 460ms var(--auth-rise) both;
+    }
+    .auth-form.is-entering .auth-form-body > *:nth-child(1) { animation-delay: 190ms; }
+    .auth-form.is-entering .auth-form-body > *:nth-child(2) { animation-delay: 225ms; }
+    .auth-form.is-entering .auth-form-body > *:nth-child(3) { animation-delay: 260ms; }
+    .auth-form.is-entering .auth-form-body > *:nth-child(4) { animation-delay: 295ms; }
+    .auth-form.is-entering .auth-form-body > *:nth-child(5) { animation-delay: 330ms; }
+    .auth-form.is-entering .auth-form-body > *:nth-child(n + 6) { animation-delay: 365ms; }
+
+    /* transform saja — opacity dipegang parent, jadi tidak dobel pudar */
     @keyframes auth-rise {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: none; }
+        from { transform: translateY(12px); }
+        to { transform: none; }
     }
 
     .auth-eyebrow {
@@ -500,7 +510,7 @@
         z-index: 20;
         background: linear-gradient(158deg, #3e7bff 0%, #1c3f91 62%, #162f6d 100%);
         will-change: transform;
-        transition: transform 0.78s cubic-bezier(0.76, 0, 0.24, 1);
+        transition: transform var(--auth-slide) var(--auth-ease);
     }
     .auth-overlay-wrap::before {
         content: "";
@@ -534,25 +544,26 @@
         padding: 3rem 2.75rem;
         text-align: left;
         opacity: 0;
-        transform: translateX(-16px);
+        transform: translateX(-18px);
         pointer-events: none;
         transition:
-            opacity 0.42s ease,
-            transform 0.66s cubic-bezier(0.22, 1, 0.36, 1);
+            opacity 260ms ease,
+            transform 560ms var(--auth-ease);
     }
-    .prompt-register { z-index: 5; opacity: 1; transform: none; pointer-events: auto; transition-delay: 0.2s; }
+    .prompt-register { z-index: 5; opacity: 1; transform: none; pointer-events: auto; transition-delay: 90ms; }
     .prompt-login { z-index: 1; }
-    .auth-shell.active .prompt-register { z-index: 1; opacity: 0; transform: translateX(16px); pointer-events: none; transition-delay: 0s; }
-    .auth-shell.active .prompt-login { z-index: 5; opacity: 1; transform: none; pointer-events: auto; transition-delay: 0.2s; }
+    .auth-shell.active .prompt-register { z-index: 1; opacity: 0; transform: translateX(18px); pointer-events: none; transition-delay: 0ms; }
+    .auth-shell.active .prompt-login { z-index: 5; opacity: 1; transform: none; pointer-events: auto; transition-delay: 90ms; }
 
-    /* isi panel muncul bertahap, tidak menempel kaku saat panel selesai bergeser */
+    /* isi panel bergeser naik bertahap — opacity sudah dipegang parent,
+       jadi tidak ada dua lapisan yang saling memudarkan */
     .overlay-content.is-entering > * {
-        animation: auth-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation: auth-rise 480ms var(--auth-rise) both;
     }
-    .overlay-content.is-entering > *:nth-child(1) { animation-delay: 0.16s; }
-    .overlay-content.is-entering > *:nth-child(2) { animation-delay: 0.22s; }
-    .overlay-content.is-entering > *:nth-child(3) { animation-delay: 0.28s; }
-    .overlay-content.is-entering > *:nth-child(4) { animation-delay: 0.34s; }
+    .overlay-content.is-entering > *:nth-child(1) { animation-delay: 120ms; }
+    .overlay-content.is-entering > *:nth-child(2) { animation-delay: 165ms; }
+    .overlay-content.is-entering > *:nth-child(3) { animation-delay: 210ms; }
+    .overlay-content.is-entering > *:nth-child(4) { animation-delay: 255ms; }
 
     .overlay-title {
         max-width: 15ch;
@@ -622,20 +633,47 @@
         .auth-forms-wrap { position: static; width: 100%; transform: none !important; }
         .auth-form { position: relative; inset: auto; padding: 2.25rem 1.5rem; display: none; overflow: visible; }
         .auth-form-inner { margin: 0; }
+        /* Di mobile panel tidak bergeser (layout jadi satu kolom), jadi
+           perpindahan form harus punya animasi sendiri. `display: none -> flex`
+           me-restart animation, jadi efeknya replay tiap ganti form. */
+        .auth-form { animation: auth-mobile-in 340ms var(--auth-rise) both; }
         .form-sign-in { display: flex; }
         .auth-shell.active .form-sign-in { display: none; }
         .auth-shell.active .form-sign-up { display: flex; }
         .auth-overlay-wrap { display: none; }
         .auth-mobile-toggle { display: block; }
+
+        /* stagger dimatikan di mobile — jarak antar-delay terasa lambat di layar kecil */
+        .auth-form.is-entering .auth-form-inner > *,
+        .auth-form.is-entering .auth-form-body > * { animation: none; }
+    }
+
+    @keyframes auth-mobile-in {
+        from { opacity: 0; transform: translateY(14px); }
+        to { opacity: 1; transform: none; }
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .auth-shell *,
-        .auth-shell *::before,
-        .auth-shell *::after {
-            animation-duration: 0.001ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.001ms !important;
+        /* Kurangi gerakan — tapi jangan matikan semua umpan balik.
+           Sebelumnya blok ini menimpa SEMUA transition jadi 0.001ms, jadi
+           pergantian form tidak terlihat sama sekali (layar seperti beku).
+           Sekarang: slide & pergeseran dimatikan, opacity tetap jalan
+           sehingga perpindahannya masih terbaca sebagai cross-fade. */
+        .auth-shell .auth-forms-wrap,
+        .auth-shell .auth-overlay-wrap {
+            transition: none !important;
+        }
+        .auth-shell .auth-form-inner,
+        .auth-shell .overlay-content {
+            transform: none !important;
+            transition: opacity 220ms ease !important;
+            transition-delay: 0ms !important;
+        }
+        .auth-shell .auth-form.is-entering .auth-form-inner > *,
+        .auth-shell .auth-form.is-entering .auth-form-body > *,
+        .auth-shell .overlay-content.is-entering > *,
+        .auth-shell .auth-form {
+            animation: none !important;
         }
     }
 </style>

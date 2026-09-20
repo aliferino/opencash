@@ -8,10 +8,10 @@
     {{-- Intro --}}
     <section class="mx-auto max-w-6xl px-6 pt-16 pb-20 md:pt-24">
         <div class="max-w-2xl">
-            <h1 class="text-4xl font-semibold leading-[1.1] tracking-tight text-ink md:text-5xl">
+            <h1 class="web-rise web-rise-1 text-4xl font-semibold leading-[1.1] tracking-tight text-ink md:text-5xl">
                 Kas kelas sering berantakan bukan karena bendaharanya malas.
             </h1>
-            <p class="mt-6 text-[17px] leading-relaxed text-muted">
+            <p class="web-rise web-rise-2 mt-6 text-[17px] leading-relaxed text-muted">
                 Uangnya dicatat di buku tulis, bukti transfer numpuk di chat WhatsApp, dan siswa cuma bisa percaya laporan lisan di akhir semester. OpenCash dibuat supaya satu kelas bisa mencatat, memverifikasi, dan melihat kas yang sama — secara real-time, tanpa harus jadi ahli spreadsheet dulu.
             </p>
         </div>
@@ -24,7 +24,7 @@
         <div class="mt-12 grid gap-x-10 gap-y-10 md:grid-cols-2">
             <div class="flex gap-4">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-tint text-accent-bright">
-                    <svg viewBox="0 0 20 20" fill="none" class="h-4.5 w-4.5"><path d="M4 10.5 8 14l8-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg viewBox="0 0 20 20" fill="none" class="h-4.5 w-4.5" aria-hidden="true"><path d="M4 10.5 8 14l8-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
                 <div>
                     <p class="font-medium text-ink">Pencatatan otomatis</p>
@@ -33,25 +33,25 @@
             </div>
             <div class="flex gap-4">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-tint text-accent-bright">
-                    <svg viewBox="0 0 20 20" fill="none" class="h-4.5 w-4.5"><path d="M4 10.5 8 14l8-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg viewBox="0 0 20 20" fill="none" class="h-4.5 w-4.5" aria-hidden="true"><path d="M4 10.5 8 14l8-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
                 <div>
                     <p class="font-medium text-ink">Verifikasi pembayaran QRIS</p>
-                    <p class="mt-1.5 text-[15px] leading-relaxed text-muted">Siswa unggah bukti bayar, bendahara tinggal cek dan konfirmasi dalam sekali klik.</p>
+                    <p class="mt-1.5 text-[15px] leading-relaxed text-muted">Siswa unggah bukti bayar, bendahara tinggal cek mutasi dan konfirmasi dalam sekali klik.</p>
                 </div>
             </div>
             <div class="flex gap-4">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-tint text-accent-bright">
-                    <svg viewBox="0 0 20 20" fill="none" class="h-4.5 w-4.5"><path d="M4 10.5 8 14l8-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg viewBox="0 0 20 20" fill="none" class="h-4.5 w-4.5" aria-hidden="true"><path d="M4 10.5 8 14l8-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
                 <div>
-                    <p class="font-medium text-ink">Notifikasi tunggakan</p>
-                    <p class="mt-1.5 text-[15px] leading-relaxed text-muted">Siswa yang belum bayar dapat pengingat otomatis, lengkap dengan denda kalau telat.</p>
+                    <p class="font-medium text-ink">Tagihan boleh dicicil</p>
+                    <p class="mt-1.5 text-[15px] leading-relaxed text-muted">Satu tagihan bisa dibayar bertahap. Sisanya tetap terlihat jelas sebagai kekurangan, bukan dianggap lunas.</p>
                 </div>
             </div>
             <div class="flex gap-4">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-tint text-accent-bright">
-                    <svg viewBox="0 0 20 20" fill="none" class="h-4.5 w-4.5"><path d="M4 10.5 8 14l8-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg viewBox="0 0 20 20" fill="none" class="h-4.5 w-4.5" aria-hidden="true"><path d="M4 10.5 8 14l8-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
                 <div>
                     <p class="font-medium text-ink">Laporan yang terbuka</p>
