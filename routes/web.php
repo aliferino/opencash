@@ -14,10 +14,9 @@ use App\Http\Controllers\Student\HistoryController as StudentHistoryController;
 use App\Http\Controllers\Student\PaymentController;
 use App\Http\Controllers\Student\StudentCashController;
 use App\Http\Controllers\Treasurer\CashExpenseController;
-use App\Http\Controllers\Treasurer\CashExpenseImportController;
 use App\Http\Controllers\Treasurer\CashIncomeController;
-use App\Http\Controllers\Treasurer\CashIncomeImportController;
 use App\Http\Controllers\Treasurer\CashScheduleController;
+use App\Http\Controllers\Treasurer\CashScheduleImportController;
 use App\Http\Controllers\Treasurer\DashboardController as TreasurerDashboardController;
 use App\Http\Controllers\Treasurer\GroupController as TreasurerGroupController;
 use App\Http\Controllers\Treasurer\ReportController;
@@ -106,7 +105,6 @@ Route::middleware('auth')->group(function () {
         Route::get('group', [TreasurerGroupController::class, 'index'])->name('group.index');
         Route::put('group', [TreasurerGroupController::class, 'update'])->name('group.update');
         Route::post('group/invite-code/refresh', [TreasurerGroupController::class, 'refreshInviteCode'])->name('group.invite-code.refresh');
-        Route::post('group/qris', [TreasurerGroupController::class, 'uploadQris'])->name('group.qris');
 
         Route::get('group/members', [TreasurerGroupController::class, 'members'])->name('group.members.index');
         Route::post('group/members', [TreasurerGroupController::class, 'storeMember'])->name('group.members.store');
@@ -117,19 +115,14 @@ Route::middleware('auth')->group(function () {
         Route::post('cash-schedules', [CashScheduleController::class, 'store'])->name('cash-schedules.store');
         Route::put('cash-schedules/{cashSchedule}', [CashScheduleController::class, 'update'])->name('cash-schedules.update');
         Route::delete('cash-schedules/{cashSchedule}', [CashScheduleController::class, 'destroy'])->name('cash-schedules.destroy');
+        Route::post('cash-schedules/import', [CashScheduleImportController::class, 'store'])->name('cash-schedules.import.store');
 
         Route::post('cash-incomes/cash', [CashIncomeController::class, 'storeCash'])->name('cash-incomes.store-cash');
         Route::get('cash-incomes/remaining', [CashIncomeController::class, 'remaining'])->name('cash-incomes.remaining');
         Route::post('cash-incomes/{cashIncome}/verify', [CashIncomeController::class, 'verify'])->name('cash-incomes.verify');
 
-        // Import/export bulk — dipisah seperti sisi siswa (HistoryController).
-        Route::get('cash-incomes/import/template', [CashIncomeImportController::class, 'template'])->name('cash-incomes.import.template');
-        Route::post('cash-incomes/import', [CashIncomeImportController::class, 'store'])->name('cash-incomes.import.store');
-
         Route::post('cash-expenses', [CashExpenseController::class, 'store'])->name('cash-expenses.store');
         Route::delete('cash-expenses/{cashExpense}', [CashExpenseController::class, 'destroy'])->name('cash-expenses.destroy');
-        Route::get('cash-expenses/import/template', [CashExpenseImportController::class, 'template'])->name('cash-expenses.import.template');
-        Route::post('cash-expenses/import', [CashExpenseImportController::class, 'store'])->name('cash-expenses.import.store');
 
         // Laporan: satu halaman (ringkasan + rincian pemasukan/pengeluaran),
         // endpoint JSON dipakai untuk memuat rincian secara async.

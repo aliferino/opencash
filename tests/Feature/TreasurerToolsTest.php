@@ -11,7 +11,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
-use Maatwebsite\Excel\Facades\Excel;
 use Tests\TestCase;
 
 class TreasurerToolsTest extends TestCase
@@ -55,174 +54,284 @@ class TreasurerToolsTest extends TestCase
         ]);
     }
 
-    // ---------------- IMPORT PEMASUKAN ----------------
+    // ---------------- IMPORT JADWAL TAGIHAN ----------------
 
-    public function test_income_import_creates_multiple_payments(): void
+    public function test_schedule_import_creates_multiple_schedules(): void
     {
         $group = $this->group();
-        $udin = $this->student($group, 'Udin', 'udin@sekolah.id');
-        $sari = $this->student($group, 'Sari', 'sari@sekolah.id');
         $treasurer = $this->treasurer($group);
-        $this->schedule($group);
 
         $csv = implode("\n", [
-            'Email Siswa,Deskripsi Tagihan,Nominal,Denda,Tanggal Bayar',
-            'udin@sekolah.id,Kas 18 September,3000,0,18/09/2026',
-            'sari@sekolah.id,Kas 18 September,5000,0,18/09/2026',
+            'Deskripsi,Jatuh Tempo,Nominal',
+            'Kas Minggu ke-3 Oktober,18/10/2026,5000',
+            'Kas Minggu ke-4 Oktober,25/10/2026,5000',
         ]);
 
         $this->actingAs($treasurer)
-            ->post(route('treasurer.cash-incomes.import.store'), [
-                'file' => UploadedFile::fake()->createWithContent('pemasukan.csv', $csv),
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('jadwal.csv', $csv),
             ])
             ->assertCreated()
             ->assertJson(['created' => 2]);
 
-        $this->assertSame(2, CashIncome::count());
-        $this->assertDatabaseHas('cash_incomes', ['student_id' => $udin->id, 'amount_paid' => 3000, 'status' => 'verified']);
-        $this->assertDatabaseHas('cash_incomes', ['student_id' => $sari->id, 'amount_paid' => 5000]);
+        $this->assertSame(2, CashSchedule::count());
+        $this->assertDatabaseHas('cash_schedules', [
+            'group_id' => $group->id,
+            'description' => 'Kas Minggu ke-3 Oktober',
+            'due_date' => '2026-10-18 00:00:00',
+            'amount' => 5000,
+        ]);
     }
 
-    public function test_income_import_rejects_all_rows_when_any_row_is_invalid(): void
+    public function test_schedule_import_accepts_thousand_separators_and_iso_dates(): void
     {
         $group = $this->group();
-        $this->student($group);
         $treasurer = $this->treasurer($group);
-        $this->schedule($group);
 
         $csv = implode("\n", [
-            'Email Siswa,Deskripsi Tagihan,Nominal,Denda,Tanggal Bayar',
-            'udin@sekolah.id,Kas 18 September,3000,0,18/09/2026',
-            'tidak-ada@sekolah.id,Kas 18 September,5000,0,18/09/2026',
+            'Deskripsi,Jatuh Tempo,Nominal',
+            'Kas Awal Semester,2026-11-05,"Rp 12.500"',
         ]);
 
         $this->actingAs($treasurer)
-            ->post(route('treasurer.cash-incomes.import.store'), [
-                'file' => UploadedFile::fake()->createWithContent('pemasukan.csv', $csv),
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('jadwal.csv', $csv),
             ])
-            ->assertStatus(422);
+            ->assertCreated();
 
-        // all-or-nothing: tidak ada yang tersimpan
-        $this->assertSame(0, CashIncome::count());
+        $this->assertDatabaseHas('cash_schedules', [
+            'description' => 'Kas Awal Semester',
+            'due_date' => '2026-11-05 00:00:00',
+            'amount' => 12500,
+        ]);
     }
 
-    public function test_income_import_rejects_amount_over_remaining(): void
+    public function test_schedule_import_rejects_all_rows_when_any_row_is_invalid(): void
     {
         $group = $this->group();
-        $this->student($group);
         $treasurer = $this->treasurer($group);
-        $this->schedule($group, 'Kas 18 September', 5000);
 
         $csv = implode("\n", [
-            'Email Siswa,Deskripsi Tagihan,Nominal,Denda,Tanggal Bayar',
-            'udin@sekolah.id,Kas 18 September,9000,0,18/09/2026',
+            'Deskripsi,Jatuh Tempo,Nominal',
+            'Kas Valid,18/10/2026,5000',
+            'Kas Rusak,bukan-tanggal,5000',
         ]);
 
         $this->actingAs($treasurer)
-            ->post(route('treasurer.cash-incomes.import.store'), [
-                'file' => UploadedFile::fake()->createWithContent('pemasukan.csv', $csv),
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('jadwal.csv', $csv),
             ])
             ->assertStatus(422);
 
-        $this->assertSame(0, CashIncome::count());
+        // all-or-nothing: baris yang valid pun tidak ikut tersimpan
+        $this->assertSame(0, CashSchedule::count());
     }
 
-    public function test_income_import_detects_conflict_between_rows(): void
+    public function test_schedule_import_detects_duplicate_rows_in_file(): void
     {
         $group = $this->group();
-        $this->student($group);
         $treasurer = $this->treasurer($group);
-        $this->schedule($group, 'Kas 18 September', 5000);
 
-        // dua baris untuk tagihan yang sama, totalnya 6000 > 5000
         $csv = implode("\n", [
-            'Email Siswa,Deskripsi Tagihan,Nominal,Denda,Tanggal Bayar',
-            'udin@sekolah.id,Kas 18 September,3000,0,18/09/2026',
-            'udin@sekolah.id,Kas 18 September,3000,0,18/09/2026',
+            'Deskripsi,Jatuh Tempo,Nominal',
+            'Kas Oktober,18/10/2026,5000',
+            'Kas Oktober,18/10/2026,5000',
         ]);
 
         $this->actingAs($treasurer)
-            ->post(route('treasurer.cash-incomes.import.store'), [
-                'file' => UploadedFile::fake()->createWithContent('pemasukan.csv', $csv),
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('jadwal.csv', $csv),
             ])
             ->assertStatus(422);
 
-        $this->assertSame(0, CashIncome::count());
+        $this->assertSame(0, CashSchedule::count());
     }
 
-    public function test_income_import_template_downloads(): void
+    public function test_schedule_import_reads_csv_pasted_into_one_column(): void
     {
         $group = $this->group();
         $treasurer = $this->treasurer($group);
 
+        // kejadian nyata: teks CSV dari Google Sheets ditempel ke Excel,
+        // semua masuk kolom A saja (satu kolom, dipisah koma)
+        $csv = implode("\n", [
+            'Deskripsi,Jatuh Tempo,Nominal',
+            'Tes 1,13/12/2026,5000',
+            'Tes 2,13/12/2026,5000',
+        ]);
+
         $this->actingAs($treasurer)
-            ->get(route('treasurer.cash-incomes.import.template'))
-            ->assertOk();
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('satu-kolom.csv', $csv),
+            ])
+            ->assertCreated()
+            ->assertJson(['created' => 2]);
+
+        $this->assertDatabaseHas('cash_schedules', [
+            'group_id' => $group->id,
+            'description' => 'Tes 1',
+            'due_date' => '2026-12-13 00:00:00',
+            'amount' => 5000,
+        ]);
     }
 
-    public function test_student_cannot_import(): void
+    public function test_schedule_import_accepts_semicolon_separated_file(): void
+    {
+        $group = $this->group();
+        $treasurer = $this->treasurer($group);
+
+        $csv = implode("\n", [
+            'Deskripsi;Jatuh Tempo;Nominal',
+            'Kas Pungutan;16/12/2026;3000',
+        ]);
+
+        $this->actingAs($treasurer)
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('titik-koma.csv', $csv),
+            ])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('cash_schedules', ['description' => 'Kas Pungutan', 'amount' => 3000]);
+    }
+
+    public function test_schedule_import_accepts_heading_synonyms(): void
+    {
+        $group = $this->group();
+        $treasurer = $this->treasurer($group);
+
+        $csv = implode("\n", [
+            'Keterangan,Tanggal,Jumlah',
+            'Dana Kebersihan,17/12/2026,4000',
+        ]);
+
+        $this->actingAs($treasurer)
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('sinonim.csv', $csv),
+            ])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('cash_schedules', [
+            'description' => 'Dana Kebersihan',
+            'due_date' => '2026-12-17 00:00:00',
+            'amount' => 4000,
+        ]);
+    }
+
+    public function test_different_bills_may_share_the_same_due_date(): void
+    {
+        $group = $this->group();
+        $treasurer = $this->treasurer($group);
+
+        // dua tagihan BERBEDA di tanggal yang sama itu wajar
+        // (mis. kas mingguan + iuran tambahan di hari yang sama)
+        $csv = implode("\n", [
+            'Deskripsi,Jatuh Tempo,Nominal',
+            'Kas Mingguan,21/12/2026,5000',
+            'Iuran Tambahan,21/12/2026,2500',
+        ]);
+
+        $this->actingAs($treasurer)
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('tanggal-sama.csv', $csv),
+            ])
+            ->assertCreated()
+            ->assertJson(['created' => 2]);
+
+        $this->assertSame(2, CashSchedule::where('due_date', '2026-12-21')->count());
+    }
+
+    public function test_schedule_import_rejects_decimal_amount_instead_of_storing_wrong_value(): void
+    {
+        $group = $this->group();
+        $treasurer = $this->treasurer($group);
+
+        // Excel mengubah "12.500" jadi desimal 12,5. Kalau dibulatkan, nominal
+        // tersimpan Rp125 — salah 100x. Harus ditolak dengan pesan jelas.
+        $csv = implode("\n", [
+            'Deskripsi,Jatuh Tempo,Nominal',
+            'Kas Besar,23/12/2026,"12.500"',
+        ]);
+
+        $this->actingAs($treasurer)
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('desimal.csv', $csv),
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame(0, CashSchedule::count());
+    }
+
+    public function test_schedule_import_skips_blank_rows_between_data(): void
+    {
+        $group = $this->group();
+        $treasurer = $this->treasurer($group);
+
+        $csv = implode("\n", [
+            'Deskripsi,Jatuh Tempo,Nominal',
+            'Kas A,18/12/2026,5000',
+            '',
+            'Kas B,19/12/2026,5000',
+        ]);
+
+        $this->actingAs($treasurer)
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('baris-kosong.csv', $csv),
+            ])
+            ->assertCreated()
+            ->assertJson(['created' => 2]);
+    }
+
+    public function test_schedule_import_fails_clearly_when_heading_is_missing(): void
+    {
+        $group = $this->group();
+        $treasurer = $this->treasurer($group);
+
+        $csv = implode("\n", [
+            'Tes 1,13/12/2026,5000',
+            'Tes 2,13/12/2026,5000',
+        ]);
+
+        $this->actingAs($treasurer)
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('tanpa-judul.csv', $csv),
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Judul kolom tidak ditemukan. Pastikan ada baris berisi kolom: Deskripsi, Jatuh Tempo, Nominal.');
+
+        $this->assertSame(0, CashSchedule::count());
+    }
+
+    public function test_schedule_import_is_scoped_to_own_group(): void
+    {
+        $mine = $this->group();
+        $other = Group::create(['name' => 'XII RPL 2', 'invite_code' => 'ZZZ999']);
+        $treasurer = $this->treasurer($mine);
+
+        $csv = implode("\n", [
+            'Deskripsi,Jatuh Tempo,Nominal',
+            'Kas Oktober,18/10/2026,5000',
+        ]);
+
+        $this->actingAs($treasurer)
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('jadwal.csv', $csv),
+            ])
+            ->assertCreated();
+
+        $this->assertSame(1, CashSchedule::where('group_id', $mine->id)->count());
+        $this->assertSame(0, CashSchedule::where('group_id', $other->id)->count());
+    }
+
+    public function test_student_cannot_import_schedules(): void
     {
         $group = $this->group();
         $student = $this->student($group);
 
         $this->actingAs($student)
-            ->post(route('treasurer.cash-incomes.import.store'), [
-                'file' => UploadedFile::fake()->createWithContent('x.csv', "a,b\n1,2"),
+            ->post(route('treasurer.cash-schedules.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('jadwal.csv', "a,b,c\n1,2,3"),
             ])
             ->assertForbidden();
-    }
-
-    // ---------------- IMPORT PENGELUARAN ----------------
-
-    public function test_expense_import_creates_multiple_expenses(): void
-    {
-        $group = $this->group();
-        $treasurer = $this->treasurer($group);
-
-        $csv = implode("\n", [
-            'Tanggal,Keterangan,Nominal',
-            '18/09/2026,Beli spidol,2000',
-            '19/09/2026,Iuran kebersihan,15000',
-        ]);
-
-        $this->actingAs($treasurer)
-            ->post(route('treasurer.cash-expenses.import.store'), [
-                'file' => UploadedFile::fake()->createWithContent('pengeluaran.csv', $csv),
-            ])
-            ->assertCreated()
-            ->assertJson(['created' => 2]);
-
-        $this->assertSame(2, CashExpense::count());
-        $this->assertDatabaseHas('cash_expenses', ['description' => 'Beli spidol', 'amount' => 2000]);
-    }
-
-    public function test_expense_import_rejects_invalid_row(): void
-    {
-        $group = $this->group();
-        $treasurer = $this->treasurer($group);
-
-        $csv = implode("\n", [
-            'Tanggal,Keterangan,Nominal',
-            '18/09/2026,,2000',
-        ]);
-
-        $this->actingAs($treasurer)
-            ->post(route('treasurer.cash-expenses.import.store'), [
-                'file' => UploadedFile::fake()->createWithContent('pengeluaran.csv', $csv),
-            ])
-            ->assertStatus(422);
-
-        $this->assertSame(0, CashExpense::count());
-    }
-
-    public function test_expense_import_template_downloads(): void
-    {
-        $group = $this->group();
-        $treasurer = $this->treasurer($group);
-
-        $this->actingAs($treasurer)
-            ->get(route('treasurer.cash-expenses.import.template'))
-            ->assertOk();
     }
 
     // ---------------- EXPORT LAPORAN ----------------
@@ -453,18 +562,64 @@ class TreasurerToolsTest extends TestCase
 
     // ---------------- QRIS DI HALAMAN GRUP ----------------
 
-    public function test_treasurer_can_upload_class_qris(): void
+    public function test_treasurer_saves_name_and_qris_with_one_submit(): void
+    {
+        $group = $this->group();
+        $treasurer = $this->treasurer($group);
+
+        // satu tombol Simpan: nama + berkas QRIS dalam satu request
+        $this->actingAs($treasurer)
+            ->post(route('treasurer.group.update'), [
+                '_method' => 'PUT',
+                'name' => 'XII RPL 1 Revisi',
+                'qris_image' => UploadedFile::fake()->image('qris.png'),
+            ])
+            ->assertOk()
+            ->assertJsonPath('name', 'XII RPL 1 Revisi');
+
+        $group->refresh();
+        $this->assertSame('XII RPL 1 Revisi', $group->name);
+        $this->assertNotNull($group->qris_image);
+    }
+
+    public function test_treasurer_can_update_name_without_touching_qris(): void
     {
         $group = $this->group();
         $treasurer = $this->treasurer($group);
 
         $this->actingAs($treasurer)
-            ->post(route('treasurer.group.qris'), [
-                'qris_image' => UploadedFile::fake()->image('qris.png'),
-            ])
+            ->put(route('treasurer.group.update'), ['name' => 'Nama Baru'])
             ->assertOk();
 
-        $this->assertNotNull($group->refresh()->qris_image);
+        $group->refresh();
+        $this->assertSame('Nama Baru', $group->name);
+        $this->assertNull($group->qris_image);
+    }
+
+    public function test_qris_upload_route_is_gone(): void
+    {
+        $group = $this->group();
+        $treasurer = $this->treasurer($group);
+
+        // QRIS sekarang ikut tombol Simpan di route group.update
+        $this->assertFalse(app('router')->has('treasurer.group.qris'));
+
+        $this->actingAs($treasurer)
+            ->post('/treasurer/group/qris', ['qris_image' => UploadedFile::fake()->image('qris.png')])
+            ->assertNotFound();
+    }
+
+    public function test_student_cannot_save_group_info_or_qris(): void
+    {
+        $group = $this->group();
+        $student = $this->student($group);
+
+        $this->actingAs($student)
+            ->put(route('treasurer.group.update'), ['name' => 'Hack'])
+            ->assertForbidden();
+
+        $this->assertSame('XII RPL 1', $group->refresh()->name);
+        $this->assertNull($group->qris_image);
     }
 
     public function test_student_sees_class_qris_on_bills_page(): void
@@ -474,7 +629,9 @@ class TreasurerToolsTest extends TestCase
         $treasurer = $this->treasurer($group);
 
         $this->actingAs($treasurer)
-            ->post(route('treasurer.group.qris'), [
+            ->post(route('treasurer.group.update'), [
+                '_method' => 'PUT',
+                'name' => $group->name,
                 'qris_image' => UploadedFile::fake()->image('qris.png'),
             ])
             ->assertOk();

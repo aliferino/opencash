@@ -32,18 +32,37 @@ class GroupController extends Controller
         return view('treasurer.groups.index', ['group' => $group]);
     }
 
+    /**
+     * Simpan informasi grup: nama dan/atau gambar QRIS kelas.
+     *
+     * QRIS ikut di sini supaya halaman Grup hanya butuh SATU tombol Simpan.
+     * Dulu QRIS punya endpoint sendiri (`uploadQris`); sekarang tidak lagi —
+     * jangan hidupkan lagi route terpisah, karena form-nya satu.
+     */
     public function update(Request $request)
     {
         $group = $this->groupOf($request);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'qris_image' => ['nullable', 'image', 'max:2048'],
         ]);
 
-        $group->update($data);
+        $group->name = $data['name'];
+
+        if ($request->hasFile('qris_image')) {
+            if ($group->qris_image) {
+                Storage::disk('public')->delete($group->qris_image);
+            }
+
+            $group->qris_image = $request->file('qris_image')->store('qris', 'public');
+        }
+
+        $group->save();
 
         return response()->json([
             ...$group->toArray(),
+            'qris_url' => $group->qris_image ? Storage::disk('public')->url($group->qris_image) : null,
             'updated_at_human' => optional($group->updated_at)->format('d M Y, H:i'),
         ]);
     }
@@ -59,35 +78,6 @@ class GroupController extends Controller
         $group->update(['invite_code' => $code]);
 
         return response()->json(['invite_code' => $code]);
-    }
-
-    /**
-     * Unggah/ganti gambar QRIS kelas.
-     *
-     * Dulu QRIS nempel di `group_settings` per periode; sekarang langsung di
-     * `groups.qris_image` karena periode sudah dihapus (lihat migrasi
-     * move_qris_to_groups_and_drop_periods).
-     */
-    public function uploadQris(Request $request)
-    {
-        $group = $this->groupOf($request);
-
-        $request->validate([
-            'qris_image' => ['required', 'image', 'max:2048'],
-        ]);
-
-        if ($group->qris_image) {
-            Storage::disk('public')->delete($group->qris_image);
-        }
-
-        $path = $request->file('qris_image')->store('qris', 'public');
-
-        $group->update(['qris_image' => $path]);
-
-        return response()->json([
-            ...$group->fresh()->toArray(),
-            'qris_url' => Storage::disk('public')->url($path),
-        ]);
     }
 
     public function members(Request $request)

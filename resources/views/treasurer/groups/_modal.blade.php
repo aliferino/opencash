@@ -1,13 +1,14 @@
 <div id="group-detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 px-4">
-    <div class="w-full max-w-md rounded-2xl border border-line bg-surface p-6">
-        <div class="flex items-center justify-between">
+    <div class="flex max-h-[88vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-surface">
+        <div class="flex shrink-0 items-center justify-between border-b border-line px-6 py-5">
             <h2 class="text-lg font-semibold text-ink">Detail Grup</h2>
             <button type="button" id="group-detail-close" class="rounded-md p-1.5 text-muted transition-colors hover:bg-white/5 hover:text-ink">
                 <i data-lucide="x" class="h-4 w-4" stroke-width="1.8"></i>
             </button>
         </div>
 
-        <form id="group-form" class="mt-5 space-y-4">
+        <div id="group-detail-body" class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+        <form id="group-form" class="space-y-4">
             <div>
                 <label for="group-name" class="text-[13px] font-medium text-ink">Nama Grup</label>
                 <input
@@ -64,11 +65,28 @@
             <p id="group-error" class="hidden text-[13px] text-red-400"></p>
             <p id="group-success" class="hidden text-[13px] text-emerald-400"></p>
 
-            <div class="flex items-center justify-end gap-3 pt-2">
-                <button type="button" id="group-detail-cancel" class="rounded-md px-4 py-2.5 text-[14px] font-medium text-muted transition-colors hover:text-ink">Batal</button>
-                <button type="submit" id="group-submit" class="rounded-md bg-accent px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-accent-bright hover:text-[#070b18]">Simpan</button>
+            {{-- QRIS Pembayaran — sengaja di dalam modal supaya grid & tabel anggota
+                 di halaman Grup tetap fokus. Di sini HANYA input berkasnya;
+                 pratinjau, zoom, dan simpan ke perangkat ada di halaman Grup. --}}
+            <div class="border-t border-line pt-4">
+                <h3 class="text-[14px] font-semibold text-ink">QRIS Pembayaran</h3>
+                <p class="mt-0.5 text-[12.5px] text-muted">Gambar QRIS kelas yang dipakai siswa untuk transfer mandiri.</p>
+
+                <div class="mt-3">
+                    <label for="group-qris-file" class="text-[13px] font-medium text-ink">Gambar QRIS</label>
+                    <input type="file" id="group-qris-file" accept="image/*"
+                        class="mt-1.5 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-[13px] text-ink outline-none file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-white focus:border-accent" />
+                    <p id="group-qris-hint" class="mt-1.5 text-xs text-muted">
+                        {{ $group->qris_image
+                            ? 'Biarkan kosong kalau tidak ingin mengganti gambar QRIS yang sekarang.'
+                            : 'Belum ada gambar QRIS. Format gambar, maksimal 2 MB.' }}
+                    </p>
+                </div>
             </div>
+
+            <button type="submit" id="group-submit" class="w-full rounded-md bg-accent px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-accent-bright hover:text-[#070b18]">Simpan</button>
         </form>
+        </div>
     </div>
 </div>
 
@@ -127,7 +145,6 @@
         var groupDetailModal = document.getElementById('group-detail-modal');
         var groupDetailOpen = document.getElementById('group-detail-open');
         var groupDetailClose = document.getElementById('group-detail-close');
-        var groupDetailCancel = document.getElementById('group-detail-cancel');
         var nameLabel = document.getElementById('group-name-label');
         var groupForm = document.getElementById('group-form');
         var nameInput = document.getElementById('group-name');
@@ -138,6 +155,7 @@
         var groupSubmit = document.getElementById('group-submit');
         var copyBtn = document.getElementById('group-invite-copy');
         var refreshBtn = document.getElementById('group-invite-refresh');
+        var qrisFileInput = document.getElementById('group-qris-file');
 
         function openGroupDetail() {
             groupError.classList.add('hidden');
@@ -155,7 +173,6 @@
 
         groupDetailOpen.addEventListener('click', openGroupDetail);
         groupDetailClose.addEventListener('click', closeGroupDetail);
-        groupDetailCancel.addEventListener('click', closeGroupDetail);
         groupDetailModal.addEventListener('click', function (e) { if (e.target === groupDetailModal) closeGroupDetail(); });
 
         function showGroupError(msg) {
@@ -170,22 +187,35 @@
             groupSuccess.classList.remove('hidden');
         }
 
+        // ---- Simpan grup: nama + (opsional) gambar QRIS dalam SATU tombol ----
+        // Kalau ada berkas QRIS dipilih, payload dikirim sebagai FormData
+        // (POST + _method=PUT) supaya Laravel tetap cocok dengan route PUT.
         groupForm.addEventListener('submit', function (e) {
             e.preventDefault();
             groupError.classList.add('hidden');
             groupSuccess.classList.add('hidden');
 
+            var hasNewQris = qrisFileInput && qrisFileInput.files.length > 0;
+            var payload;
+            var headers = { Accept: 'application/json', 'X-CSRF-TOKEN': csrf };
+
+            if (hasNewQris) {
+                payload = new FormData();
+                payload.append('_method', 'PUT');
+                payload.append('name', nameInput.value);
+                payload.append('qris_image', qrisFileInput.files[0]);
+            } else {
+                payload = JSON.stringify({ name: nameInput.value });
+                headers['Content-Type'] = 'application/json';
+            }
+
             groupSubmit.disabled = true;
             groupSubmit.textContent = 'Menyimpan...';
 
             fetch(groupUrl, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                },
-                body: JSON.stringify({ name: nameInput.value }),
+                method: 'POST',
+                headers: headers,
+                body: payload,
             })
                 .then(function (res) {
                     if (!res.ok) return res.json().then(function (d) { throw d; });
@@ -194,6 +224,15 @@
                 .then(function (data) {
                     if (data.updated_at_human) updatedAtEl.textContent = data.updated_at_human;
                     if (data.name) nameLabel.textContent = data.name;
+
+                    if (hasNewQris) {
+                        // pratinjau di halaman Grup ikut diperbarui tanpa reload
+                        window.dispatchEvent(new CustomEvent('qris:updated', {
+                            detail: { url: data.qris_url },
+                        }));
+                        qrisFileInput.value = '';
+                    }
+
                     closeGroupDetail();
                 })
                 .catch(function (d) {

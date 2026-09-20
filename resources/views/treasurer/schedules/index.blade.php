@@ -10,4 +10,5 @@
 
     @include('treasurer.schedules._table')
     @include('treasurer.schedules._modal')
+    @include('treasurer.schedules._import')
 @endsection

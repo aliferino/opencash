@@ -44,5 +44,4 @@
 
     @include('treasurer.incomes._table')
     @include('treasurer.incomes._modal')
-    @include('treasurer.incomes._import')
 @endsection
