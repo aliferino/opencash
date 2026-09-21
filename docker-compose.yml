@@ -1,0 +1,47 @@
+# Uji image produksi di laptop: docker compose up --build
+# Butuh Docker Desktop (di mesin ini belum terpasang).
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8080
+      APP_KEY: ${APP_KEY:?set APP_KEY dulu}
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_DATABASE: opencash
+      DB_USERNAME: opencash
+      DB_PASSWORD: secret
+      SESSION_DRIVER: database
+      CACHE_STORE: file
+      QUEUE_CONNECTION: database
+      FILESYSTEM_DISK: local
+      LOG_CHANNEL: stderr
+    volumes:
+      - uploads:/app/storage/app/public
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: opencash
+      MYSQL_USER: opencash
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: rootsecret
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-prootsecret"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+volumes:
+  dbdata:
+  uploads:

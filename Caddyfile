@@ -1,0 +1,11 @@
+{
+	frankenphp
+}
+
+# SERVER_NAME di-set oleh docker/entrypoint.sh -> ":${PORT:-8080}"
+# Contoh: ":8080" (HTTP biasa, TLS ditangani reverse proxy platform)
+{$SERVER_NAME:localhost} {
+	root public/
+	encode zstd br gzip
+	php_server
+}
